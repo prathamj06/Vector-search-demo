@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Cpu, Target, Compass, Code, Radio, Copy, Check, Info } from 'lucide-react';
+import { Cpu, Target, Compass, Code, Copy, Check, Info } from 'lucide-react';
 import { Document, DomainConfig, VectorSearchResult } from '../lib/types';
 import { DOMAIN_CONFIGS } from '../lib/domains';
 
@@ -14,6 +14,38 @@ interface VectorVisualizerProps {
   documents: Document[];
 }
 
+// Reusable step badge
+const StepBadge: React.FC<{ n: number; color: 'blue' | 'indigo' | 'violet' | 'green' | 'teal' }> = ({ n, color }) => {
+  const colors = {
+    blue:   'bg-blue-600 text-white',
+    indigo: 'bg-indigo-600 text-white',
+    violet: 'bg-violet-600 text-white',
+    green:  'bg-green-600 text-white',
+    teal:   'bg-teal-600 text-white',
+  };
+  return (
+    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-bold flex-shrink-0 ${colors[color]}`}>
+      {n}
+    </span>
+  );
+};
+
+// Reusable card with left accent
+const StageCard: React.FC<{ children: React.ReactNode; accent: 'blue' | 'indigo' | 'violet' | 'green' | 'teal' }> = ({ children, accent }) => {
+  const borders = {
+    blue:   'border-l-blue-500',
+    indigo: 'border-l-indigo-500',
+    violet: 'border-l-violet-500',
+    green:  'border-l-green-500',
+    teal:   'border-l-teal-500',
+  };
+  return (
+    <div className={`bg-white border border-gray-200 border-l-4 ${borders[accent]} rounded-xl shadow-sm overflow-hidden`}>
+      {children}
+    </div>
+  );
+};
+
 export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
   query,
   queryVector,
@@ -21,16 +53,25 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
   vectorResults,
   activeDomain,
 }) => {
-  const currentDomainConfig: DomainConfig = DOMAIN_CONFIGS[activeDomain as keyof typeof DOMAIN_CONFIGS] || DOMAIN_CONFIGS.animals;
-  const [hoveredNode, setHoveredNode] = useState<{ id: string; title: string; score: number; coords: { x: number; y: number } } | null>(null);
-  const [selectedResultDoc, setSelectedResultDoc] = useState<VectorSearchResult>(vectorResults[0] || null);
+  const currentDomainConfig: DomainConfig =
+    DOMAIN_CONFIGS[activeDomain as keyof typeof DOMAIN_CONFIGS] || DOMAIN_CONFIGS.animals;
+
+  const [hoveredNode, setHoveredNode] = useState<{
+    id: string;
+    title: string;
+    score: number;
+    coords: { x: number; y: number };
+  } | null>(null);
+  const [selectedResultDoc, setSelectedResultDoc] = useState<VectorSearchResult>(
+    vectorResults[0] || null
+  );
   const [copiedJSON, setCopiedJSON] = useState(false);
   const [topK, setTopK] = useState(3);
 
-  // Sync top result selection if search results change
-  const activeSelectedDoc = selectedResultDoc && vectorResults.some(r => r.doc.id === selectedResultDoc.doc.id)
-    ? selectedResultDoc
-    : vectorResults[0];
+  const activeSelectedDoc =
+    selectedResultDoc && vectorResults.some((r) => r.doc.id === selectedResultDoc.doc.id)
+      ? selectedResultDoc
+      : vectorResults[0];
 
   const handleCopyJSON = () => {
     if (!activeSelectedDoc) return;
@@ -55,97 +96,103 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Module Title Header */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-5 animate-fade-in-up">
+
+      {/* ── Module Header ── */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-            <Cpu className="w-6 h-6 animate-pulse" />
+          <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0">
+            <Cpu className="w-4.5 h-4.5 text-blue-600" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-100">
-              Vector (Semantic) Search Visualizer
-            </h2>
-            <p className="text-xs text-slate-400">
-              5-Stage Exposure: Text-to-Vector $\to$ Concept Weights $\to$ 2D Spatial Plot $\to$ Laser Distance Scan $\to$ Vector DB JSON
+            <h2 className="text-base font-semibold text-gray-900">Vector (Semantic) Search</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              5 stages: Text → Vector → Concept Weights → 2D Plot → Proximity Ranking → DB Record
             </p>
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400 font-medium">Top-K Proximity Filter:</span>
+        {/* Top-K Control */}
+        <div className="flex items-center gap-2 flex-shrink-0 self-start sm:self-auto">
+          <label htmlFor="topk-select" className="text-xs text-gray-500 font-medium">
+            Top-K filter:
+          </label>
           <select
+            id="topk-select"
             value={topK}
             onChange={(e) => setTopK(Number(e.target.value))}
-            className="bg-slate-950 border border-slate-700 text-cyan-300 text-xs font-bold rounded-lg px-2.5 py-1 focus:outline-none"
+            className="bg-gray-50 border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
           >
-            <option value={1}>Top 1 Nearest</option>
-            <option value={2}>Top 2 Nearest</option>
-            <option value={3}>Top 3 Nearest</option>
-            <option value={5}>Top 5 Nearest</option>
+            <option value={1}>Top 1</option>
+            <option value={2}>Top 2</option>
+            <option value={3}>Top 3</option>
+            <option value={5}>Top 5</option>
           </select>
         </div>
       </div>
 
-      {/* STAGE 1 & STAGE 2 GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ── Stages 1 & 2 Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-        {/* STAGE 1: TEXT-TO-VECTOR MAPPING */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-cyan-500/20 border border-cyan-400 flex items-center justify-center text-[10px] font-bold">1</span>
-              Stage 1: Text-to-Vector Mapping
+        {/* STAGE 1 — Text-to-Vector Mapping */}
+        <StageCard accent="blue">
+          <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+            <span className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              <StepBadge n={1} color="blue" />
+              Text → Vector Mapping
             </span>
-            <span className="text-[11px] text-cyan-300 font-mono">Dense 4D Vector</span>
+            <span className="text-[11px] text-blue-600 font-mono font-medium">Dense 4D</span>
           </div>
-
-          <div className="space-y-3">
-            <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
-              <span className="text-[11px] text-slate-400 font-semibold">Active Query Text:</span>
-              <p className="text-sm font-bold text-cyan-300">"{query || 'Type a prompt...'}"</p>
+          <div className="px-5 py-4 space-y-3">
+            <div className="rounded-lg bg-gray-50 border border-gray-200 px-3.5 py-3 space-y-1">
+              <span className="text-[11px] text-gray-400 font-medium">Active query</span>
+              <p className="text-sm font-semibold text-gray-900">"{query || 'Type a prompt…'}"</p>
             </div>
-
-            <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 space-y-2">
+            <div className="rounded-lg bg-blue-50 border border-blue-200 px-3.5 py-3 space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-cyan-300">Normalized 4-Dimensional Array:</span>
-                <span className="text-[10px] font-mono text-cyan-400">L2 Normalized</span>
+                <span className="text-[11px] font-semibold text-blue-700">L2-Normalized Vector</span>
+                <span className="text-[10px] font-mono text-blue-500">4 dimensions</span>
               </div>
-              <div className="flex flex-wrap gap-2 font-mono">
+              <div className="grid grid-cols-2 gap-2 font-mono">
                 {queryVector.map((val, idx) => (
-                  <div key={idx} className="flex-1 min-w-[70px] bg-slate-900 border border-cyan-500/40 rounded-lg p-2 text-center">
-                    <div className="text-[10px] text-slate-400 truncate">{currentDomainConfig.dimensions[idx]}</div>
-                    <div className="text-sm font-bold text-cyan-200 mt-0.5">{val > 0 ? `+${val}` : val}</div>
+                  <div
+                    key={idx}
+                    className="flex flex-col gap-0.5 bg-white border border-blue-200 rounded-lg px-3 py-2"
+                  >
+                    <span className="text-[10px] text-gray-400 truncate">
+                      {currentDomainConfig.dimensions[idx]}
+                    </span>
+                    <span className={`text-sm font-bold ${val >= 0 ? 'text-blue-700' : 'text-indigo-600'}`}>
+                      {val > 0 ? `+${val}` : val}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
-        </div>
+        </StageCard>
 
-        {/* STAGE 2: INSPECT THE BRAIN CATEGORY RADAR */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-indigo-500/20 border border-indigo-400 flex items-center justify-center text-[10px] font-bold">2</span>
-              Stage 2: "Inspect the Brain" Concept Weights
+        {/* STAGE 2 — Concept Weight Radar */}
+        <StageCard accent="indigo">
+          <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+            <span className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              <StepBadge n={2} color="indigo" />
+              Concept Weights
             </span>
-            <span className="text-[11px] text-indigo-300">Concept Spectrum</span>
+            <span className="text-[11px] text-indigo-600 font-medium">Inspect the brain</span>
           </div>
-
-          <div className="space-y-3">
+          <div className="px-5 py-4 space-y-3">
             {currentDomainConfig.dimensions.map((dimLabel, idx) => {
               const weightVal = queryVector[idx] || 0;
               const barPercent = Math.max(0, Math.min(100, Math.round(weightVal * 100)));
               return (
                 <div key={idx} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-200">{dimLabel}</span>
-                    <span className="font-mono text-indigo-300 font-bold">{barPercent}%</span>
+                    <span className="font-medium text-gray-700">{dimLabel}</span>
+                    <span className="font-mono font-semibold text-indigo-600">{barPercent}%</span>
                   </div>
-                  <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                     <div
-                      className="bg-gradient-to-r from-cyan-500 to-indigo-500 h-2.5 rounded-full transition-all duration-500 shadow-sm shadow-cyan-500/50"
+                      className="bg-indigo-500 h-2 rounded-full transition-all duration-500"
                       style={{ width: `${barPercent}%` }}
                     />
                   </div>
@@ -153,86 +200,96 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
               );
             })}
           </div>
-        </div>
+        </StageCard>
 
       </div>
 
-      {/* STAGE 3 & STAGE 4: 2D SPATIAL CANVAS GRID & LASER PROXIMITY SCAN */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-          <div>
-            <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-              <Compass className="w-5 h-5 text-cyan-400" />
-              <span>Stages 3 & 4: 2D Spatial Coordinate Plot & Laser Proximity Ring</span>
-            </h3>
-            <p className="text-xs text-slate-400">
-              Pulsating cyan query target node + document nodes connected by laser distance vectors
-            </p>
+      {/* ── Stages 3 & 4 — 2D Spatial Canvas ── */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-violet-50 border border-violet-200 flex items-center justify-center flex-shrink-0">
+              <Compass className="w-4 h-4 text-violet-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800">
+                <span className="mr-1">
+                  <StepBadge n={3} color="violet" />
+                </span>
+                <span className="ml-1">2D Spatial Plot &</span>
+                <span className="ml-1">
+                  <StepBadge n={4} color="violet" />
+                </span>
+                <span className="ml-1">Proximity Scan</span>
+              </h3>
+            </div>
           </div>
-
-          <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-4 text-xs flex-shrink-0">
             <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-cyan-400 animate-ping shrink-0" />
-              <span className="text-cyan-300 font-semibold">Query Node</span>
+              <span className="w-3 h-3 rounded-full bg-blue-600 border-2 border-blue-200 flex-shrink-0" />
+              <span className="text-gray-500">Query</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-indigo-500 shrink-0" />
-              <span className="text-indigo-300 font-semibold">Corpus Docs</span>
+              <span className="w-3 h-3 rounded-full bg-indigo-500 flex-shrink-0" />
+              <span className="text-gray-500">Top-K matches</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-gray-300 flex-shrink-0" />
+              <span className="text-gray-400">Other docs</span>
             </div>
           </div>
         </div>
 
-        {/* Educational Projection Note */}
-        <div className="p-3 rounded-xl bg-cyan-950/30 border border-cyan-500/30 flex items-start gap-2.5 text-xs text-cyan-200">
-          <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+        {/* Educational Note */}
+        <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-lg bg-blue-50 border border-blue-200 flex items-start gap-2 text-xs text-blue-700">
+          <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
           <span>
-            <strong>Educational Note:</strong> Squeezing multi-dimensional vectors onto a 2D screen works like a 3D shadow on a flat wall—it preserves relative concept distances while fitting on screen!
+            <strong>Educational note:</strong> Multi-dimensional vectors are projected onto 2D, like a 3D shadow on a flat wall — relative distances between concepts are preserved.
           </span>
         </div>
 
-        {/* SPATIAL SVG CANVAS PLOT */}
-        <div className="relative w-full h-80 sm:h-96 rounded-xl bg-slate-950 border border-slate-800 overflow-hidden select-none">
-          {/* Subtle Grid Background */}
-          <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none" />
+        {/* SVG Canvas */}
+        <div className="relative w-full h-80 sm:h-96 mx-auto bg-gray-50 m-4 rounded-xl border border-gray-200 overflow-hidden select-none" style={{ width: 'calc(100% - 2rem)' }}>
+          {/* Dot grid */}
+          <div
+            className="absolute inset-0 opacity-60 pointer-events-none"
+            style={{
+              backgroundImage: 'radial-gradient(circle, #d1d5db 1px, transparent 1px)',
+              backgroundSize: '20px 20px',
+            }}
+          />
 
-          {/* SVG Overlay for Laser lines & Scanning Rings */}
+          {/* SVG: lines and rings */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none">
-            {/* Pulsating Expanding Proximity Laser Rings */}
+            {/* Proximity circle */}
             <circle
               cx={`${queryCoords.x}%`}
               cy={`${queryCoords.y}%`}
-              r="40"
-              className="fill-cyan-500/5 stroke-cyan-400/40 stroke-dashed animate-pulse"
-              strokeDasharray="4 2"
-            />
-            <circle
-              cx={`${queryCoords.x}%`}
-              cy={`${queryCoords.y}%`}
-              r="85"
-              className="fill-cyan-500/5 stroke-cyan-500/20 stroke-dashed"
+              r="60"
+              fill="rgba(37,99,235,0.04)"
+              stroke="rgba(37,99,235,0.2)"
+              strokeWidth="1"
               strokeDasharray="6 3"
             />
-
-            {/* Laser Lines from Query Node to Top-K Document Nodes */}
+            {/* Laser lines to Top-K */}
             {vectorResults.slice(0, topK).map((res) => (
-              <g key={`laser-${res.doc.id}`}>
-                <line
-                  x1={`${queryCoords.x}%`}
-                  y1={`${queryCoords.y}%`}
-                  x2={`${res.doc.coords.x}%`}
-                  y2={`${res.doc.coords.y}%`}
-                  className="stroke-cyan-400/80 stroke-2"
-                  strokeDasharray="4 4"
-                />
-              </g>
+              <line
+                key={`line-${res.doc.id}`}
+                x1={`${queryCoords.x}%`}
+                y1={`${queryCoords.y}%`}
+                x2={`${res.doc.coords.x}%`}
+                y2={`${res.doc.coords.y}%`}
+                stroke="rgba(99,102,241,0.5)"
+                strokeWidth="1.5"
+                strokeDasharray="5 4"
+              />
             ))}
           </svg>
 
-          {/* DOCUMENT NODES */}
+          {/* Document nodes */}
           {vectorResults.map((res) => {
             const isTopK = res.rank <= topK;
             const isSelected = activeSelectedDoc?.doc.id === res.doc.id;
-
             return (
               <div
                 key={res.doc.id}
@@ -246,33 +303,27 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
                   })
                 }
                 onMouseLeave={() => setHoveredNode(null)}
-                style={{
-                  left: `${res.doc.coords.x}%`,
-                  top: `${res.doc.coords.y}%`,
-                }}
-                className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-300 z-10 group ${
+                style={{ left: `${res.doc.coords.x}%`, top: `${res.doc.coords.y}%` }}
+                className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-transform duration-200 z-10 ${
                   isSelected ? 'scale-125 z-30' : 'hover:scale-110 z-20'
                 }`}
               >
-                {/* Node Marker Circle */}
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shadow-lg border transition-all ${
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shadow-md border-2 transition-all ${
                     res.doc.isCustom
-                      ? 'bg-emerald-500 border-emerald-300 text-slate-950 shadow-emerald-500/50'
+                      ? 'bg-green-500 border-green-200 text-white shadow-green-200'
                       : isTopK
-                      ? 'bg-indigo-500 border-cyan-300 text-white shadow-indigo-500/50'
-                      : 'bg-slate-800 border-slate-600 text-slate-400'
+                      ? 'bg-indigo-600 border-indigo-200 text-white shadow-indigo-200'
+                      : 'bg-white border-gray-300 text-gray-500 shadow-gray-100'
                   }`}
                 >
-                  #{res.rank}
+                  {res.rank}
                 </div>
-
-                {/* Similarity Badge Tag */}
                 <div
-                  className={`absolute left-1/2 -translate-x-1/2 mt-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold whitespace-nowrap shadow-md border ${
+                  className={`absolute left-1/2 -translate-x-1/2 top-full mt-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold whitespace-nowrap border ${
                     isTopK
-                      ? 'bg-indigo-950/90 text-cyan-300 border-indigo-500/50'
-                      : 'bg-slate-900 text-slate-400 border-slate-800'
+                      ? 'bg-white text-indigo-600 border-indigo-200 shadow-sm'
+                      : 'bg-white text-gray-400 border-gray-200'
                   }`}
                 >
                   {res.similarity}%
@@ -281,81 +332,92 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
             );
           })}
 
-          {/* QUERY TARGET NODE */}
+          {/* Query node */}
           <div
-            style={{
-              left: `${queryCoords.x}%`,
-              top: `${queryCoords.y}%`,
-            }}
+            style={{ left: `${queryCoords.x}%`, top: `${queryCoords.y}%` }}
             className="absolute -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none"
           >
             <div className="relative flex items-center justify-center">
-              <div className="absolute w-10 h-10 rounded-full bg-cyan-400/30 animate-ping" />
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500 border-2 border-white flex items-center justify-center shadow-xl shadow-cyan-500/60">
-                <Target className="w-4 h-4 text-slate-950 animate-spin-slow" />
+              <div className="w-10 h-10 rounded-full bg-blue-600 border-4 border-white shadow-lg shadow-blue-200 flex items-center justify-center">
+                <Target className="w-4 h-4 text-white" />
               </div>
             </div>
-            <div className="mt-1.5 px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-200 border border-cyan-400/50 text-[10px] font-bold text-center whitespace-nowrap shadow-lg">
-              🎯 Query Vector
+            <div className="mt-1.5 px-2.5 py-1 rounded-full bg-blue-600 text-white border border-blue-700 text-[10px] font-bold text-center whitespace-nowrap shadow-md">
+              Query
             </div>
           </div>
 
-          {/* Interactive Tooltip on Hover */}
+          {/* Hover tooltip */}
           {hoveredNode && (
             <div
-              style={{
-                left: `${hoveredNode.coords.x}%`,
-                top: `${hoveredNode.coords.y}%`,
-              }}
-              className="absolute -translate-x-1/2 -translate-y-16 bg-slate-900 border border-cyan-500/50 text-slate-100 rounded-lg p-2 text-xs shadow-xl z-40 pointer-events-none whitespace-nowrap"
+              style={{ left: `${hoveredNode.coords.x}%`, top: `${hoveredNode.coords.y}%` }}
+              className="absolute -translate-x-1/2 -translate-y-full -mt-3 bg-white border border-gray-200 text-gray-800 rounded-lg px-3 py-2 text-xs shadow-lg z-40 pointer-events-none whitespace-nowrap"
             >
-              <div className="font-bold text-cyan-300">{hoveredNode.title}</div>
-              <div className="text-[10px] text-slate-400">
-                Cosine Similarity: <span className="text-emerald-400 font-bold">{hoveredNode.score}%</span>
+              <div className="font-semibold text-gray-900">{hoveredNode.title}</div>
+              <div className="text-gray-500 mt-0.5">
+                Similarity:{' '}
+                <span className={`font-bold ${hoveredNode.score >= 80 ? 'text-green-600' : 'text-indigo-600'}`}>
+                  {hoveredNode.score}%
+                </span>
               </div>
             </div>
           )}
         </div>
+
+        <div className="h-4" />
       </div>
 
-      {/* STAGE 5: RAW VECTOR DB PAYLOAD INSPECTOR */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-[10px] font-bold">5</span>
-            Stage 5: Raw Vector Database Payload Inspector
+      {/* ── Stage 5 — Vector DB Payload Inspector ── */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+          <span className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+            <StepBadge n={5} color="green" />
+            Vector DB Payload Inspector
           </span>
-
           <button
             onClick={handleCopyJSON}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition cursor-pointer border border-slate-700"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium transition-colors cursor-pointer border border-gray-200"
           >
-            {copiedJSON ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copiedJSON ? 'Copied Payload!' : 'Copy JSON'}</span>
+            {copiedJSON ? (
+              <Check className="w-3.5 h-3.5 text-green-500" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
+            <span>{copiedJSON ? 'Copied!' : 'Copy JSON'}</span>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Document Selector Pills */}
-          <div className="space-y-2">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Select Record to Inspect:
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
+          {/* Record selector */}
+          <div className="px-5 py-4 space-y-2">
+            <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+              Select record:
             </span>
-            <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+            <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
               {vectorResults.map((res) => {
                 const isSelected = activeSelectedDoc?.doc.id === res.doc.id;
                 return (
                   <button
                     key={res.doc.id}
                     onClick={() => setSelectedResultDoc(res)}
-                    className={`w-full text-left p-2.5 rounded-xl border text-xs transition cursor-pointer flex items-center justify-between ${
+                    className={`w-full text-left px-3 py-2.5 rounded-lg border text-xs transition-colors cursor-pointer flex items-center justify-between gap-2 ${
                       isSelected
-                        ? 'bg-cyan-950/80 border-cyan-500/50 text-cyan-200 font-bold shadow-md'
-                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 hover:border-gray-300'
                     }`}
                   >
-                    <span className="truncate pr-2">#{res.rank} {res.doc.title}</span>
-                    <span className={`font-mono text-[10px] font-bold ${res.similarity >= 80 ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    <span className="truncate font-medium">
+                      #{res.rank} {res.doc.title}
+                    </span>
+                    <span
+                      className={`font-mono text-[10px] font-bold flex-shrink-0 ${
+                        isSelected
+                          ? 'text-blue-200'
+                          : res.similarity >= 80
+                          ? 'text-green-600'
+                          : 'text-gray-400'
+                      }`}
+                    >
                       {res.similarity}%
                     </span>
                   </button>
@@ -364,39 +426,43 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
             </div>
           </div>
 
-          {/* JSON Inspector Viewport */}
-          <div className="lg:col-span-2 bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-emerald-400 overflow-x-auto shadow-inner space-y-2">
-            <div className="flex items-center gap-2 text-slate-500 text-[10px] pb-1 border-b border-slate-900">
-              <Code className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Vector Database Record Payload (Document ID: {activeSelectedDoc?.doc.id})</span>
+          {/* JSON viewport */}
+          <div className="lg:col-span-2 bg-gray-950 rounded-br-xl rounded-bl-xl lg:rounded-bl-none lg:rounded-tr-xl px-5 py-4">
+            <div className="flex items-center gap-2 text-gray-500 text-[10px] pb-2 border-b border-gray-800 mb-3">
+              <Code className="w-3.5 h-3.5 text-blue-400" />
+              <span className="font-mono">
+                vector_db_record · id: {activeSelectedDoc?.doc.id}
+              </span>
             </div>
-
             {activeSelectedDoc ? (
-              <pre className="text-[11px] leading-relaxed">
-{JSON.stringify(
-  {
-    id: activeSelectedDoc.doc.id,
-    similarity_score: `${activeSelectedDoc.similarity}%`,
-    cosine_similarity_raw: Number((activeSelectedDoc.similarity / 100).toFixed(4)),
-    spatial_2d_coords: activeSelectedDoc.doc.coords,
-    dense_vector_4d: activeSelectedDoc.doc.vector,
-    payload: {
-      title: activeSelectedDoc.doc.title,
-      content: activeSelectedDoc.doc.content,
-      domain: activeSelectedDoc.doc.domain,
-      is_custom: !!activeSelectedDoc.doc.isCustom,
-    },
-  },
-  null,
-  2
-)}
+              <pre className="text-[12px] leading-relaxed text-emerald-400 font-mono overflow-x-auto">
+                {JSON.stringify(
+                  {
+                    id: activeSelectedDoc.doc.id,
+                    similarity_score: `${activeSelectedDoc.similarity}%`,
+                    cosine_similarity_raw: Number(
+                      (activeSelectedDoc.similarity / 100).toFixed(4)
+                    ),
+                    spatial_2d_coords: activeSelectedDoc.doc.coords,
+                    dense_vector_4d: activeSelectedDoc.doc.vector,
+                    payload: {
+                      title: activeSelectedDoc.doc.title,
+                      content: activeSelectedDoc.doc.content,
+                      domain: activeSelectedDoc.doc.domain,
+                      is_custom: !!activeSelectedDoc.doc.isCustom,
+                    },
+                  },
+                  null,
+                  2
+                )}
               </pre>
             ) : (
-              <div className="text-slate-600">Select a result to inspect...</div>
+              <div className="text-gray-600 text-xs">Select a record to inspect…</div>
             )}
           </div>
         </div>
       </div>
+
     </div>
   );
 };

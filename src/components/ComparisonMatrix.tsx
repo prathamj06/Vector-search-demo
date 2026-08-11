@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BookOpen, Cpu, AlertCircle, CheckCircle2, ArrowRight, Zap } from 'lucide-react';
+import { BookOpen, Cpu, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 import { KeywordSearchResult, VectorSearchResult } from '../lib/types';
 
 interface ComparisonMatrixProps {
@@ -16,69 +16,84 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
   vectorResults,
 }) => {
   return (
-    <div className="space-y-6">
-      {/* Intro Header */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-2">
-        <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-          <Zap className="w-5 h-5 text-cyan-400" />
-          <span>Side-by-Side Direct Search Comparison</span>
-        </h2>
-        <p className="text-xs text-slate-400">
-          Comparing exact character matching vs deep semantic conceptual understanding for query: <strong className="text-cyan-300">"{query || 'None'}"</strong>
+    <div className="space-y-5 animate-fade-in-up">
+
+      {/* ── Header ── */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm px-5 py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-gray-900">Side-by-Side Comparison</h2>
+            <ArrowRight className="w-4 h-4 text-gray-400" />
+            <span className="text-sm text-gray-500">Same query, two engines</span>
+          </div>
+          {query && (
+            <code className="ml-auto text-xs bg-gray-100 border border-gray-200 text-gray-700 px-2.5 py-1 rounded-md font-mono">
+              "{query}"
+            </code>
+          )}
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Exact character matching vs. deep semantic conceptual understanding — notice where each engine succeeds and fails.
         </p>
       </div>
 
-      {/* Side-by-Side Dual Column Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* ── Dual Column ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-        {/* LEFT COLUMN: KEYWORD SEARCH RESULTS */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-md">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        {/* LEFT — Keyword Search */}
+        <div className="bg-white border border-gray-200 border-l-4 border-l-amber-500 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
-                <BookOpen className="w-4 h-4" />
+              <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
+                <BookOpen className="w-3.5 h-3.5 text-amber-600" />
               </div>
-              <h3 className="text-sm font-bold text-slate-200">
-                Keyword Search (Lexical)
-              </h3>
+              <h3 className="text-sm font-semibold text-gray-800">Keyword Search</h3>
             </div>
-            <span className="text-[10px] uppercase font-bold text-amber-400 bg-amber-950 px-2 py-0.5 rounded border border-amber-500/30">
-              Literal Overlap
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wide">
+              Literal
             </span>
           </div>
-
-          <div className="space-y-3">
+          <div className="px-5 py-4 space-y-2.5">
             {keywordResults.map((kr, idx) => {
               const isZero = kr.matchScore === 0;
               return (
                 <div
                   key={kr.doc.id}
-                  className={`p-3.5 rounded-xl border transition-all ${
+                  className={`rounded-lg border px-3.5 py-3 transition-colors ${
                     isZero
-                      ? 'bg-slate-950/40 border-slate-800 text-slate-500'
-                      : 'bg-amber-950/20 border-amber-500/30 text-slate-200'
+                      ? 'bg-red-50 border-red-200'
+                      : 'bg-amber-50 border-amber-200'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold text-slate-200">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="text-xs font-semibold text-gray-800 truncate">
                       #{idx + 1} {kr.doc.title}
                     </span>
-                    <span className={`text-xs font-mono font-bold ${isZero ? 'text-red-400' : 'text-amber-300'}`}>
-                      {kr.matchScore}% Match
+                    <span
+                      className={`text-xs font-mono font-bold flex-shrink-0 ${
+                        isZero ? 'text-red-500' : 'text-amber-600'
+                      }`}
+                    >
+                      {kr.matchScore}%
                     </span>
                   </div>
-
-                  <p className="text-xs text-slate-400 line-clamp-2">
-                    "{kr.doc.content}"
-                  </p>
-
-                  <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
-                    <span className="text-slate-500">
-                      Matched tokens: {kr.matchedTokens.length > 0 ? kr.matchedTokens.join(', ') : 'None'}
+                  <p className="text-[11px] text-gray-500 line-clamp-2">"{kr.doc.content}"</p>
+                  {/* Score bar */}
+                  <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className={`h-1.5 rounded-full transition-all duration-500 ${
+                        isZero ? 'bg-red-400' : 'bg-amber-500'
+                      }`}
+                      style={{ width: `${kr.matchScore}%` }}
+                    />
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between text-[10px]">
+                    <span className="text-gray-400">
+                      Matched: {kr.matchedTokens.length > 0 ? kr.matchedTokens.join(', ') : 'none'}
                     </span>
                     {isZero && (
-                      <span className="text-red-400 font-semibold flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> Synonym Missed
+                      <span className="flex items-center gap-1 text-red-500 font-medium">
+                        <AlertCircle className="w-3 h-3" /> Synonym missed
                       </span>
                     )}
                   </div>
@@ -88,54 +103,60 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
           </div>
         </div>
 
-        {/* RIGHT COLUMN: VECTOR SEARCH RESULTS */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-md">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        {/* RIGHT — Vector Search */}
+        <div className="bg-white border border-gray-200 border-l-4 border-l-blue-500 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-                <Cpu className="w-4 h-4" />
+              <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0">
+                <Cpu className="w-3.5 h-3.5 text-blue-600" />
               </div>
-              <h3 className="text-sm font-bold text-slate-200">
-                Vector Search (Semantic)
-              </h3>
+              <h3 className="text-sm font-semibold text-gray-800">Vector Search</h3>
             </div>
-            <span className="text-[10px] uppercase font-bold text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-500/30">
-              Cosine Similarity
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase tracking-wide">
+              Semantic
             </span>
           </div>
-
-          <div className="space-y-3">
+          <div className="px-5 py-4 space-y-2.5">
             {vectorResults.map((vr) => {
               const isHigh = vr.similarity >= 80;
               return (
                 <div
                   key={vr.doc.id}
-                  className={`p-3.5 rounded-xl border transition-all ${
+                  className={`rounded-lg border px-3.5 py-3 transition-colors ${
                     isHigh
-                      ? 'bg-cyan-950/30 border-cyan-500/40 text-slate-100 shadow-sm shadow-cyan-500/10'
-                      : 'bg-slate-950/40 border-slate-800 text-slate-400'
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-gray-50 border-gray-200'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold text-slate-200">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="text-xs font-semibold text-gray-800 truncate">
                       #{vr.rank} {vr.doc.title}
                     </span>
-                    <span className={`text-xs font-mono font-bold ${isHigh ? 'text-emerald-400' : 'text-cyan-300'}`}>
-                      {vr.similarity}% Similarity
+                    <span
+                      className={`text-xs font-mono font-bold flex-shrink-0 ${
+                        isHigh ? 'text-green-600' : 'text-blue-600'
+                      }`}
+                    >
+                      {vr.similarity}%
                     </span>
                   </div>
-
-                  <p className="text-xs text-slate-300 line-clamp-2">
-                    "{vr.doc.content}"
-                  </p>
-
-                  <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
-                    <span className="text-slate-400 font-mono">
-                      Dense 4D: [{vr.doc.vector.slice(0, 2).join(', ')}...]
+                  <p className="text-[11px] text-gray-500 line-clamp-2">"{vr.doc.content}"</p>
+                  {/* Score bar */}
+                  <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className={`h-1.5 rounded-full transition-all duration-500 ${
+                        isHigh ? 'bg-green-500' : 'bg-blue-500'
+                      }`}
+                      style={{ width: `${vr.similarity}%` }}
+                    />
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between text-[10px]">
+                    <span className="text-gray-400 font-mono">
+                      vec: [{vr.doc.vector.slice(0, 2).join(', ')}…]
                     </span>
                     {isHigh && (
-                      <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Semantic Match
+                      <span className="flex items-center gap-1 text-green-600 font-medium">
+                        <CheckCircle2 className="w-3 h-3" /> Semantic match
                       </span>
                     )}
                   </div>

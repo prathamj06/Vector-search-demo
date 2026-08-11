@@ -1,49 +1,61 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Cpu, Columns, Sparkles, Layers } from 'lucide-react';
-import { DomainType, Document } from '../lib/types';
+import { Cpu, BookOpen, Columns } from 'lucide-react';
+import { DomainType } from '../lib/types';
 import { DOMAIN_CONFIGS } from '../lib/domains';
 import { performKeywordSearch } from '../lib/keywordEngine';
 import { performVectorSearch } from '../lib/vectorEngine';
 import { Header } from '../components/Header';
 import { ChallengeBanner } from '../components/ChallengeBanner';
-import { CorpusManager } from '../components/CorpusManager';
 import { KeywordVisualizer } from '../components/KeywordVisualizer';
 import { VectorVisualizer } from '../components/VectorVisualizer';
 import { ComparisonMatrix } from '../components/ComparisonMatrix';
+import { useDocumentStore } from '../lib/useDocumentStore';
+
+type ActiveTab = 'vector' | 'keyword' | 'comparison';
 
 export default function Home() {
   const [activeDomain, setActiveDomain] = useState<DomainType>('animals');
   const [query, setQuery] = useState('speedy dog');
-  const [activeTab, setActiveTab] = useState<'keyword' | 'vector' | 'comparison'>('vector');
-  const [documents, setDocuments] = useState<Document[]>(DOMAIN_CONFIGS.animals.defaultDocs);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('vector');
+  const { documents, setDocuments, resetToDefaults } = useDocumentStore(activeDomain);
 
-  // When domain changes, load default dataset and preset query
+  // Update query preset on domain change
   useEffect(() => {
-    const config = DOMAIN_CONFIGS[activeDomain];
-    setDocuments(config.defaultDocs);
-    setQuery(config.samplePrompts[0] || '');
+    setQuery(DOMAIN_CONFIGS[activeDomain].samplePrompts[0] || '');
   }, [activeDomain]);
 
-  const resetToDefaults = () => {
-    setDocuments(DOMAIN_CONFIGS[activeDomain].defaultDocs);
-  };
+  // Compute search results
+  const { tokens, activeTokens, filteredStopWords, results: keywordResults } =
+    performKeywordSearch(query, documents);
 
-  // Perform real-time lexical & semantic search calculations inside client browser memory
-  const { tokens, activeTokens, filteredStopWords, results: keywordResults } = performKeywordSearch(
-    query,
-    documents
-  );
+  const { queryVector, queryCoords, results: vectorResults } =
+    performVectorSearch(query, documents);
 
-  const { queryVector, queryCoords, results: vectorResults } = performVectorSearch(
-    query,
-    documents
-  );
+  const tabs: { id: ActiveTab; label: string; icon: React.ReactNode; color: string }[] = [
+    {
+      id: 'vector',
+      label: 'Semantic Search',
+      icon: <Cpu className="w-4 h-4" />,
+      color: 'blue',
+    },
+    {
+      id: 'keyword',
+      label: 'Keyword Search',
+      icon: <BookOpen className="w-4 h-4" />,
+      color: 'amber',
+    },
+    {
+      id: 'comparison',
+      label: 'Side-by-Side',
+      icon: <Columns className="w-4 h-4" />,
+      color: 'gray',
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500/30 selection:text-cyan-200 pb-16">
-      {/* Top Main Navigation Header */}
+    <div className="min-h-screen bg-[#F9FAFB] text-gray-900 flex flex-col">
       <Header
         query={query}
         setQuery={setQuery}
@@ -51,10 +63,43 @@ export default function Home() {
         setActiveDomain={setActiveDomain}
       />
 
-      {/* Main Container Content */}
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-6 space-y-6">
+      <main id="main-content" className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-6 space-y-5">
 
-        {/* Gamified Challenge Banner */}
+        {/* ── Tab Navigation ── */}
+        <nav aria-label="Visualizer tabs">
+          <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-full sm:w-auto inline-flex">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              const colorMap = {
+                blue:  isActive ? 'text-blue-700'  : 'text-gray-500 hover:text-gray-700',
+                amber: isActive ? 'text-amber-700' : 'text-gray-500 hover:text-gray-700',
+                gray:  isActive ? 'text-gray-800'  : 'text-gray-500 hover:text-gray-700',
+              };
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`panel-${tab.id}`}
+                  id={`tab-${tab.id}`}
+                  className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-white shadow-sm text-gray-900'
+                      : colorMap[tab.color as keyof typeof colorMap]
+                  }`}
+                >
+                  <span className={isActive ? (tab.color === 'blue' ? 'text-blue-600' : tab.color === 'amber' ? 'text-amber-600' : 'text-gray-600') : 'text-gray-400'}>
+                    {tab.icon}
+                  </span>
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+
+        {/* ── Challenge Strip (below tabs, contextual) ── */}
         <ChallengeBanner
           query={query}
           setQuery={setQuery}
@@ -63,98 +108,52 @@ export default function Home() {
           vectorResults={vectorResults}
         />
 
-        {/* Live Corpus Manager (In-Memory DB Portal) */}
-        <CorpusManager
-          documents={documents}
-          setDocuments={setDocuments}
-          activeDomain={activeDomain}
-          resetToDefaults={resetToDefaults}
-        />
+        {/* ── Tab Panels ── */}
+        <div className="animate-fade-in-up">
+          {activeTab === 'vector' && (
+            <div id="panel-vector" role="tabpanel" aria-labelledby="tab-vector">
+              <VectorVisualizer
+                query={query}
+                queryVector={queryVector}
+                queryCoords={queryCoords}
+                vectorResults={vectorResults}
+                activeDomain={activeDomain}
+                documents={documents}
+              />
+            </div>
+          )}
 
-        {/* NAVIGATION TABS FOR VISUALIZERS */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-2 rounded-2xl shadow-xl">
-          <div className="flex items-center gap-1.5 w-full sm:w-auto">
-            <button
-              onClick={() => setActiveTab('vector')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer ${
-                activeTab === 'vector'
-                  ? 'bg-gradient-to-r from-cyan-500/20 to-indigo-500/20 border border-cyan-400 text-cyan-300 shadow-md shadow-cyan-500/10'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <Cpu className="w-4 h-4 text-cyan-400" />
-              <span>Vector (Semantic) Visualizer</span>
-            </button>
+          {activeTab === 'keyword' && (
+            <div id="panel-keyword" role="tabpanel" aria-labelledby="tab-keyword">
+              <KeywordVisualizer
+                query={query}
+                tokens={tokens}
+                activeTokens={activeTokens}
+                filteredStopWords={filteredStopWords}
+                keywordResults={keywordResults}
+                documents={documents}
+              />
+            </div>
+          )}
 
-            <button
-              onClick={() => setActiveTab('keyword')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer ${
-                activeTab === 'keyword'
-                  ? 'bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-400 text-amber-300 shadow-md shadow-amber-500/10'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <BookOpen className="w-4 h-4 text-amber-400" />
-              <span>Keyword (Lexical) Visualizer</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('comparison')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer ${
-                activeTab === 'comparison'
-                  ? 'bg-slate-800 border border-slate-600 text-slate-100 shadow-md'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <Columns className="w-4 h-4 text-indigo-400" />
-              <span>Side-by-Side Matrix</span>
-            </button>
-          </div>
-
-          <div className="hidden lg:flex items-center gap-2 text-xs text-slate-400 pr-3">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-            <span>100% Client-Side In-Memory Engine</span>
-          </div>
+          {activeTab === 'comparison' && (
+            <div id="panel-comparison" role="tabpanel" aria-labelledby="tab-comparison">
+              <ComparisonMatrix
+                query={query}
+                keywordResults={keywordResults}
+                vectorResults={vectorResults}
+              />
+            </div>
+          )}
         </div>
-
-        {/* TAB 1: KEYWORD VISUALIZER */}
-        {activeTab === 'keyword' && (
-          <KeywordVisualizer
-            query={query}
-            tokens={tokens}
-            activeTokens={activeTokens}
-            filteredStopWords={filteredStopWords}
-            keywordResults={keywordResults}
-            documents={documents}
-          />
-        )}
-
-        {/* TAB 2: VECTOR VISUALIZER (5-STAGE) */}
-        {activeTab === 'vector' && (
-          <VectorVisualizer
-            query={query}
-            queryVector={queryVector}
-            queryCoords={queryCoords}
-            vectorResults={vectorResults}
-            activeDomain={activeDomain}
-            documents={documents}
-          />
-        )}
-
-        {/* TAB 3: SIDE-BY-SIDE MATRIX */}
-        {activeTab === 'comparison' && (
-          <ComparisonMatrix
-            query={query}
-            keywordResults={keywordResults}
-            vectorResults={vectorResults}
-          />
-        )}
 
       </main>
 
-      {/* Footer Branding */}
-      <footer className="mt-12 border-t border-slate-900 text-center py-6 text-xs text-slate-500">
-        <p>Built for Next.js + Tailwind CSS Workshops • Vercel Free-Tier Ready (100% In-Browser State)</p>
+      <footer className="border-t border-gray-200 bg-white mt-auto">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-400">
+          <p>Vector vs. Keyword Search — Interactive Learning Tool</p>
+          <p>100% client-side · No server · No tracking</p>
+        </div>
       </footer>
     </div>
   );
