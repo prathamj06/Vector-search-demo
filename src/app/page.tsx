@@ -1,69 +1,161 @@
-import Image from "next/image";
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { BookOpen, Cpu, Columns, Sparkles, Layers } from 'lucide-react';
+import { DomainType, Document } from '../lib/types';
+import { DOMAIN_CONFIGS } from '../lib/domains';
+import { performKeywordSearch } from '../lib/keywordEngine';
+import { performVectorSearch } from '../lib/vectorEngine';
+import { Header } from '../components/Header';
+import { ChallengeBanner } from '../components/ChallengeBanner';
+import { CorpusManager } from '../components/CorpusManager';
+import { KeywordVisualizer } from '../components/KeywordVisualizer';
+import { VectorVisualizer } from '../components/VectorVisualizer';
+import { ComparisonMatrix } from '../components/ComparisonMatrix';
 
 export default function Home() {
+  const [activeDomain, setActiveDomain] = useState<DomainType>('animals');
+  const [query, setQuery] = useState('speedy dog');
+  const [activeTab, setActiveTab] = useState<'keyword' | 'vector' | 'comparison'>('vector');
+  const [documents, setDocuments] = useState<Document[]>(DOMAIN_CONFIGS.animals.defaultDocs);
+
+  // When domain changes, load default dataset and preset query
+  useEffect(() => {
+    const config = DOMAIN_CONFIGS[activeDomain];
+    setDocuments(config.defaultDocs);
+    setQuery(config.samplePrompts[0] || '');
+  }, [activeDomain]);
+
+  const resetToDefaults = () => {
+    setDocuments(DOMAIN_CONFIGS[activeDomain].defaultDocs);
+  };
+
+  // Perform real-time lexical & semantic search calculations inside client browser memory
+  const { tokens, activeTokens, filteredStopWords, results: keywordResults } = performKeywordSearch(
+    query,
+    documents
+  );
+
+  const { queryVector, queryCoords, results: vectorResults } = performVectorSearch(
+    query,
+    documents
+  );
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500/30 selection:text-cyan-200 pb-16">
+      {/* Top Main Navigation Header */}
+      <Header
+        query={query}
+        setQuery={setQuery}
+        activeDomain={activeDomain}
+        setActiveDomain={setActiveDomain}
+      />
+
+      {/* Main Container Content */}
+      <main className="max-w-7xl mx-auto px-4 md:px-8 py-6 space-y-6">
+
+        {/* Gamified Challenge Banner */}
+        <ChallengeBanner
+          query={query}
+          setQuery={setQuery}
+          activeDomain={activeDomain}
+          keywordResults={keywordResults}
+          vectorResults={vectorResults}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+
+        {/* Live Corpus Manager (In-Memory DB Portal) */}
+        <CorpusManager
+          documents={documents}
+          setDocuments={setDocuments}
+          activeDomain={activeDomain}
+          resetToDefaults={resetToDefaults}
+        />
+
+        {/* NAVIGATION TABS FOR VISUALIZERS */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-2 rounded-2xl shadow-xl">
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+            <button
+              onClick={() => setActiveTab('vector')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer ${
+                activeTab === 'vector'
+                  ? 'bg-gradient-to-r from-cyan-500/20 to-indigo-500/20 border border-cyan-400 text-cyan-300 shadow-md shadow-cyan-500/10'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              <Cpu className="w-4 h-4 text-cyan-400" />
+              <span>Vector (Semantic) Visualizer</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('keyword')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer ${
+                activeTab === 'keyword'
+                  ? 'bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-400 text-amber-300 shadow-md shadow-amber-500/10'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <BookOpen className="w-4 h-4 text-amber-400" />
+              <span>Keyword (Lexical) Visualizer</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('comparison')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer ${
+                activeTab === 'comparison'
+                  ? 'bg-slate-800 border border-slate-600 text-slate-100 shadow-md'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <Columns className="w-4 h-4 text-indigo-400" />
+              <span>Side-by-Side Matrix</span>
+            </button>
+          </div>
+
+          <div className="hidden lg:flex items-center gap-2 text-xs text-slate-400 pr-3">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+            <span>100% Client-Side In-Memory Engine</span>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+        {/* TAB 1: KEYWORD VISUALIZER */}
+        {activeTab === 'keyword' && (
+          <KeywordVisualizer
+            query={query}
+            tokens={tokens}
+            activeTokens={activeTokens}
+            filteredStopWords={filteredStopWords}
+            keywordResults={keywordResults}
+            documents={documents}
+          />
+        )}
+
+        {/* TAB 2: VECTOR VISUALIZER (5-STAGE) */}
+        {activeTab === 'vector' && (
+          <VectorVisualizer
+            query={query}
+            queryVector={queryVector}
+            queryCoords={queryCoords}
+            vectorResults={vectorResults}
+            activeDomain={activeDomain}
+            documents={documents}
+          />
+        )}
+
+        {/* TAB 3: SIDE-BY-SIDE MATRIX */}
+        {activeTab === 'comparison' && (
+          <ComparisonMatrix
+            query={query}
+            keywordResults={keywordResults}
+            vectorResults={vectorResults}
+          />
+        )}
+
       </main>
+
+      {/* Footer Branding */}
+      <footer className="mt-12 border-t border-slate-900 text-center py-6 text-xs text-slate-500">
+        <p>Built for Next.js + Tailwind CSS Workshops • Vercel Free-Tier Ready (100% In-Browser State)</p>
+      </footer>
     </div>
   );
 }
