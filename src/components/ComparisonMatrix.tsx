@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
-import { BookOpen, Cpu, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
-import { KeywordSearchResult, VectorSearchResult } from '../lib/types';
+import React, { useState } from 'react';
+import { BookOpen, Cpu, AlertCircle, CheckCircle2, ArrowRight, Info } from 'lucide-react';
+import { KeywordSearchResult, VectorSearchResult, ConceptInfo } from '../lib/types';
+import { ConceptInfoModal } from './ConceptInfoModal';
 
 interface ComparisonMatrixProps {
   query: string;
@@ -10,26 +11,51 @@ interface ComparisonMatrixProps {
   vectorResults: VectorSearchResult[];
 }
 
+const COMPARISON_CONCEPT_INFO: ConceptInfo = {
+  title: 'Side-by-Side Direct Search Comparison',
+  subtitle: 'Directly comparing literal string matching against semantic vector similarity',
+  whatItIs:
+    'Renders search rankings from both Keyword (Lexical) and Vector (Semantic) engines simultaneously for the exact same input query.',
+  whyItMatters:
+    'Clearly demonstrates real-world retrieval failures where Keyword search scores 0% on valid answers due to synonym mismatches, while Vector search ranks them near 100%.',
+  keywordVsVector:
+    'Keyword search ranks documents by counting literal word overlap. Vector search ranks documents by measuring spatial angle and conceptual proximity in vector space.',
+};
+
 export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
   query,
   keywordResults,
   vectorResults,
 }) => {
+  const [showInfo, setShowInfo] = useState(false);
+
   return (
     <div className="space-y-5 animate-fade-in-up">
+      {/* Interactive Info Modal */}
+      <ConceptInfoModal
+        info={showInfo ? COMPARISON_CONCEPT_INFO : null}
+        onClose={() => setShowInfo(false)}
+      />
 
       {/* ── Header ── */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm px-5 py-4">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-xs px-5 py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-gray-900">Side-by-Side Comparison</h2>
-            <ArrowRight className="w-4 h-4 text-gray-400" />
-            <span className="text-sm text-gray-500">Same query, two engines</span>
+            <h2 className="text-base font-semibold text-gray-900">Side-by-Side Direct Search Comparison</h2>
+            <button
+              onClick={() => setShowInfo(true)}
+              className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+              title="Explain Comparison Matrix"
+            >
+              <Info className="w-3.5 h-3.5" />
+            </button>
           </div>
-          {query && (
-            <code className="ml-auto text-xs bg-gray-100 border border-gray-200 text-gray-700 px-2.5 py-1 rounded-md font-mono">
+          {query ? (
+            <code className="text-xs bg-gray-100 border border-gray-200 text-gray-700 px-2.5 py-1 rounded-md font-mono">
               "{query}"
             </code>
+          ) : (
+            <span className="text-xs text-gray-400 italic">No query entered</span>
           )}
         </div>
         <p className="text-xs text-gray-500 mt-2">
@@ -41,18 +67,19 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
         {/* LEFT — Keyword Search */}
-        <div className="bg-white border border-gray-200 border-l-4 border-l-amber-500 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-gray-200 border-l-4 border-l-amber-500 rounded-xl shadow-xs overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
                 <BookOpen className="w-3.5 h-3.5 text-amber-600" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-800">Keyword Search</h3>
+              <h3 className="text-sm font-semibold text-gray-800">Keyword Search (Lexical)</h3>
             </div>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wide">
-              Literal
+              Literal Overlap
             </span>
           </div>
+
           <div className="px-5 py-4 space-y-2.5">
             {keywordResults.map((kr, idx) => {
               const isZero = kr.matchScore === 0;
@@ -104,18 +131,19 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
         </div>
 
         {/* RIGHT — Vector Search */}
-        <div className="bg-white border border-gray-200 border-l-4 border-l-blue-500 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-gray-200 border-l-4 border-l-blue-500 rounded-xl shadow-xs overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0">
                 <Cpu className="w-3.5 h-3.5 text-blue-600" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-800">Vector Search</h3>
+              <h3 className="text-sm font-semibold text-gray-800">Vector Search (Semantic)</h3>
             </div>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase tracking-wide">
-              Semantic
+              Cosine Similarity
             </span>
           </div>
+
           <div className="px-5 py-4 space-y-2.5">
             {vectorResults.map((vr) => {
               const isHigh = vr.similarity >= 80;

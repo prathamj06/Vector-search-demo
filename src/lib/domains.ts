@@ -1,5 +1,5 @@
 import { DomainConfig, DomainType } from './types';
-import { generateVector, projectVectorTo2D } from './vectorEngine';
+import { projectVectorTo2D } from './vectorEngine';
 
 export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
   animals: {
@@ -8,13 +8,19 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
     icon: '🐕',
     description: 'Explore semantic closeness between canine/feline species, movement speed, and eating habits.',
     dimensions: ['🐕 Canine / Animal', '⚡ Speed / Agility', '🍕 Food / Hunger', '😴 Rest / Comfort'],
-    samplePrompts: ['speedy dog', 'tasty noodles', 'lazy feline', 'hungry puppy'],
+    samplePrompts: [
+      { query: 'speedy dog', explanation: 'Synonym test — Keyword misses "quick canine" (0%), Vector gets >85% match!' },
+      { query: 'hungry puppy', explanation: 'Food concept — Maps puppy near food bowls & dining content.' },
+      { query: 'lazy feline', explanation: 'Rest concept — Connects "feline" with "cat", "kitten", & "napping".' },
+      { query: 'tasty noodles', explanation: 'Out-of-domain outlier — Shows how distant concepts drop in similarity.' },
+    ],
     challenge: {
       targetQuery: 'speedy dog',
       description: 'Search for "speedy dog" — watch Keyword Search get 0% on "quick canine", while Vector Search gets >85%!',
       hint: 'Keywords look for exact letters "speedy" and "dog", but vectors understand "quick" = "speedy" and "canine" = "dog"!',
     },
     defaultDocs: [
+      // Beginner set (3 core docs)
       {
         id: 'doc-a1',
         title: 'Quick Canine Field Run',
@@ -22,14 +28,7 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
         domain: 'animals',
         vector: [0.92, 0.95, -0.10, 0.05],
         coords: projectVectorTo2D([0.92, 0.95, -0.10, 0.05]),
-      },
-      {
-        id: 'doc-a2',
-        title: 'Fast Hound Tennis Chase',
-        content: 'Fast hound chasing a bouncy yellow tennis ball with great agility',
-        domain: 'animals',
-        vector: [0.88, 0.90, -0.15, 0.10],
-        coords: projectVectorTo2D([0.88, 0.90, -0.15, 0.10]),
+        complexity: 'beginner',
       },
       {
         id: 'doc-a3',
@@ -38,14 +37,7 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
         domain: 'animals',
         vector: [0.90, -0.75, -0.20, 0.88],
         coords: projectVectorTo2D([0.90, -0.75, -0.20, 0.88]),
-      },
-      {
-        id: 'doc-a4',
-        title: 'Sleeping Kitten Blanket',
-        content: 'Sleeping kitten resting gently on a soft knitted wool blanket',
-        domain: 'animals',
-        vector: [0.88, -0.80, -0.25, 0.92],
-        coords: projectVectorTo2D([0.88, -0.80, -0.25, 0.92]),
+        complexity: 'beginner',
       },
       {
         id: 'doc-a5',
@@ -54,6 +46,26 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
         domain: 'animals',
         vector: [0.85, 0.30, 0.92, 0.20],
         coords: projectVectorTo2D([0.85, 0.30, 0.92, 0.20]),
+        complexity: 'beginner',
+      },
+      // Standard set additions
+      {
+        id: 'doc-a2',
+        title: 'Fast Hound Tennis Chase',
+        content: 'Fast hound chasing a bouncy yellow tennis ball with great agility',
+        domain: 'animals',
+        vector: [0.88, 0.90, -0.15, 0.10],
+        coords: projectVectorTo2D([0.88, 0.90, -0.15, 0.10]),
+        complexity: 'standard',
+      },
+      {
+        id: 'doc-a4',
+        title: 'Sleeping Kitten Blanket',
+        content: 'Sleeping kitten resting gently on a soft knitted wool blanket',
+        domain: 'animals',
+        vector: [0.88, -0.80, -0.25, 0.92],
+        coords: projectVectorTo2D([0.88, -0.80, -0.25, 0.92]),
+        complexity: 'standard',
       },
       {
         id: 'doc-a6',
@@ -62,6 +74,26 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
         domain: 'animals',
         vector: [-0.30, 0.00, 0.98, 0.10],
         coords: projectVectorTo2D([-0.30, 0.00, 0.98, 0.10]),
+        complexity: 'standard',
+      },
+      // Advanced set additions
+      {
+        id: 'doc-a7',
+        title: 'Sprinting Cheetah Chase',
+        content: 'Wild sprinting predator dashing across the savannah terrain',
+        domain: 'animals',
+        vector: [0.40, 0.98, 0.10, -0.30],
+        coords: projectVectorTo2D([0.40, 0.98, 0.10, -0.30]),
+        complexity: 'advanced',
+      },
+      {
+        id: 'doc-a8',
+        title: 'Slumbering Bear Cave',
+        content: 'Slumbering giant bear sleeping in a cold dark mountain cave',
+        domain: 'animals',
+        vector: [0.60, -0.85, 0.20, 0.95],
+        coords: projectVectorTo2D([0.60, -0.85, 0.20, 0.95]),
+        complexity: 'advanced',
       },
     ],
   },
@@ -72,7 +104,12 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
     icon: '🛍️',
     description: 'Compare product searches for apparel, weather insulation, and active sports gear.',
     dimensions: ['🧥 Clothing / Wear', '❄️ Thermal / Warmth', '🏃 Active / Sports', '⛰️ Outdoor / Rough'],
-    samplePrompts: ['warm winter coat', 'waterproof boots', 'breathable running shirt', 'cozy fleece jacket'],
+    samplePrompts: [
+      { query: 'warm winter coat', explanation: 'Synonym test — Keyword misses "cozy fleece jacket", Vector gets >85% similarity!' },
+      { query: 'waterproof boots', explanation: 'Feature test — Maps outdoor hiking gear together.' },
+      { query: 'running shirt', explanation: 'Athletic test — Finds lightweight breathable marathon apparel.' },
+      { query: 'cozy fleece jacket', explanation: 'Thermal test — Connects soft fleece with winter parkas.' },
+    ],
     challenge: {
       targetQuery: 'warm winter coat',
       description: 'Search for "warm winter coat" — Keyword Search gets 0% on "cozy fleece jacket", but Vector Search gets >85%!',
@@ -86,14 +123,7 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
         domain: 'ecommerce',
         vector: [0.90, 0.88, 0.15, 0.30],
         coords: projectVectorTo2D([0.90, 0.88, 0.15, 0.30]),
-      },
-      {
-        id: 'doc-e2',
-        title: 'Heavy Snowstorm Insulated Parka',
-        content: 'Heavy insulated parka built for extreme freezing snowstorms and blizzards',
-        domain: 'ecommerce',
-        vector: [0.92, 0.98, 0.10, 0.65],
-        coords: projectVectorTo2D([0.92, 0.98, 0.10, 0.65]),
+        complexity: 'beginner',
       },
       {
         id: 'doc-e3',
@@ -102,6 +132,7 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
         domain: 'ecommerce',
         vector: [0.85, -0.60, 0.95, 0.20],
         coords: projectVectorTo2D([0.85, -0.60, 0.95, 0.20]),
+        complexity: 'beginner',
       },
       {
         id: 'doc-e4',
@@ -110,6 +141,16 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
         domain: 'ecommerce',
         vector: [0.80, 0.30, 0.70, 0.98],
         coords: projectVectorTo2D([0.80, 0.30, 0.70, 0.98]),
+        complexity: 'beginner',
+      },
+      {
+        id: 'doc-e2',
+        title: 'Heavy Snowstorm Insulated Parka',
+        content: 'Heavy insulated parka built for extreme freezing snowstorms and blizzards',
+        domain: 'ecommerce',
+        vector: [0.92, 0.98, 0.10, 0.65],
+        coords: projectVectorTo2D([0.92, 0.98, 0.10, 0.65]),
+        complexity: 'standard',
       },
       {
         id: 'doc-e5',
@@ -118,6 +159,25 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
         domain: 'ecommerce',
         vector: [0.95, -0.40, 0.20, -0.30],
         coords: projectVectorTo2D([0.95, -0.40, 0.20, -0.30]),
+        complexity: 'standard',
+      },
+      {
+        id: 'doc-e6',
+        title: 'Thermal Wool Ski Gloves',
+        content: 'Insulated waterproof winter gloves for high-speed alpine skiing',
+        domain: 'ecommerce',
+        vector: [0.85, 0.90, 0.60, 0.70],
+        coords: projectVectorTo2D([0.85, 0.90, 0.60, 0.70]),
+        complexity: 'advanced',
+      },
+      {
+        id: 'doc-e7',
+        title: 'Ultralight Running Sneakers',
+        content: 'Flexible cushioned footwear for high-performance track sprinters',
+        domain: 'ecommerce',
+        vector: [0.70, -0.30, 0.98, 0.40],
+        coords: projectVectorTo2D([0.70, -0.30, 0.98, 0.40]),
+        complexity: 'advanced',
       },
     ],
   },
@@ -128,7 +188,12 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
     icon: '🎬',
     description: 'Find movies by plot themes, mood, and genre concepts rather than exact titles.',
     dimensions: ['🌌 Sci-Fi / Space', '🌀 Mind-Bending', '😂 Comedy / Humor', '💖 Romance / Emotion'],
-    samplePrompts: ['mind-bending space movie', 'hilarious comedy film', 'romantic drama', 'interstellar sci-fi'],
+    samplePrompts: [
+      { query: 'mind-bending space movie', explanation: 'Theme test — Keyword misses "Interstellar Cosmic Journey" (0%), Vector scores >88%!' },
+      { query: 'hilarious comedy film', explanation: 'Genre test — Connects funny, rooming house mates, & humor.' },
+      { query: 'romantic drama', explanation: 'Emotion test — Maps autumn Paris lovers & heartwarming plots.' },
+      { query: 'interstellar sci-fi', explanation: 'Cosmic test — Finds wormholes, black holes, & space travel.' },
+    ],
     challenge: {
       targetQuery: 'mind-bending space movie',
       description: 'Search for "mind-bending space movie" — Keyword Search misses "Interstellar journey", Vector Search scores >88%!',
@@ -142,14 +207,7 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
         domain: 'movies',
         vector: [0.98, 0.82, -0.40, 0.20],
         coords: projectVectorTo2D([0.98, 0.82, -0.40, 0.20]),
-      },
-      {
-        id: 'doc-m2',
-        title: 'Subconscious Dream Sci-Fi',
-        content: 'Mind-altering sci-fi trip navigating deep subconscious dream levels',
-        domain: 'movies',
-        vector: [0.75, 0.98, -0.30, 0.10],
-        coords: projectVectorTo2D([0.75, 0.98, -0.30, 0.10]),
+        complexity: 'beginner',
       },
       {
         id: 'doc-m3',
@@ -158,6 +216,7 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
         domain: 'movies',
         vector: [-0.40, -0.50, 0.98, 0.10],
         coords: projectVectorTo2D([-0.40, -0.50, 0.98, 0.10]),
+        complexity: 'beginner',
       },
       {
         id: 'doc-m4',
@@ -166,6 +225,16 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
         domain: 'movies',
         vector: [-0.20, -0.20, 0.10, 0.98],
         coords: projectVectorTo2D([-0.20, -0.20, 0.10, 0.98]),
+        complexity: 'beginner',
+      },
+      {
+        id: 'doc-m2',
+        title: 'Subconscious Dream Sci-Fi',
+        content: 'Mind-altering sci-fi trip navigating deep subconscious dream levels',
+        domain: 'movies',
+        vector: [0.75, 0.98, -0.30, 0.10],
+        coords: projectVectorTo2D([0.75, 0.98, -0.30, 0.10]),
+        complexity: 'standard',
       },
       {
         id: 'doc-m5',
@@ -174,6 +243,25 @@ export const DOMAIN_CONFIGS: Record<DomainType, DomainConfig> = {
         domain: 'movies',
         vector: [0.60, 0.40, 0.40, -0.20],
         coords: projectVectorTo2D([0.60, 0.40, 0.40, -0.20]),
+        complexity: 'standard',
+      },
+      {
+        id: 'doc-m6',
+        title: 'Galactic Bounty Hunter Thriller',
+        content: 'Futuristic space western following an elusive bounty hunter in distant galaxies',
+        domain: 'movies',
+        vector: [0.90, 0.50, 0.20, -0.40],
+        coords: projectVectorTo2D([0.90, 0.50, 0.20, -0.40]),
+        complexity: 'advanced',
+      },
+      {
+        id: 'doc-m7',
+        title: 'Tragic Time-Loop Mystery',
+        content: 'Emotional psychological puzzle where a detective relives the same rainy day',
+        domain: 'movies',
+        vector: [0.30, 0.92, -0.20, 0.70],
+        coords: projectVectorTo2D([0.30, 0.92, -0.20, 0.70]),
+        complexity: 'advanced',
       },
     ],
   },

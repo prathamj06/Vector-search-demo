@@ -1,5 +1,7 @@
 export type DomainType = 'animals' | 'ecommerce' | 'movies';
 
+export type ComplexityLevel = 'beginner' | 'standard' | 'advanced';
+
 export interface Document {
   id: string;
   title: string;
@@ -8,6 +10,12 @@ export interface Document {
   vector: number[]; // 4D dense vector [v1, v2, v3, v4]
   coords: { x: number; y: number }; // Projected 2D position (0-100 scale)
   isCustom?: boolean;
+  complexity?: ComplexityLevel;
+}
+
+export interface SamplePrompt {
+  query: string;
+  explanation: string;
 }
 
 export interface DomainConfig {
@@ -15,7 +23,7 @@ export interface DomainConfig {
   label: string;
   icon: string;
   description: string;
-  samplePrompts: string[];
+  samplePrompts: SamplePrompt[];
   dimensions: string[]; // Labels for the 4 dimensions in this domain
   challenge: {
     targetQuery: string;
@@ -49,4 +57,12 @@ export interface VectorSearchResult {
   similarity: number; // 0 - 100%
   distance: number;   // Euclidean distance on 2D or 4D space
   rank: number;
+}
+
+export interface ConceptInfo {
+  title: string;
+  subtitle: string;
+  whatItIs: string;
+  whyItMatters: string;
+  keywordVsVector: string;
 }

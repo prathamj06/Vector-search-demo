@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
-import { Filter, Trash2, BookOpen, AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
-import { Document, InvertedIndexEntry, KeywordSearchResult, TokenInfo } from '../lib/types';
+import React, { useState } from 'react';
+import { Filter, Trash2, BookOpen, AlertTriangle, CheckCircle2, ShieldAlert, Info } from 'lucide-react';
+import { Document, InvertedIndexEntry, KeywordSearchResult, TokenInfo, ConceptInfo } from '../lib/types';
 import { generateInvertedIndex } from '../lib/keywordEngine';
+import { ConceptInfoModal } from './ConceptInfoModal';
 
 interface KeywordVisualizerProps {
   query: string;
@@ -14,7 +15,49 @@ interface KeywordVisualizerProps {
   documents: Document[];
 }
 
-// Step badge — numbered circle
+const KEYWORD_CONCEPT_INFOS: Record<number, ConceptInfo> = {
+  1: {
+    title: 'Step 1: Lexical Tokenization',
+    subtitle: 'Splitting text into normalized word tokens',
+    whatItIs:
+      'The raw search query is split into individual lowercase word tokens, stripping punctuation and special symbols.',
+    whyItMatters:
+      'Normalizing text ensures case-insensitive matching ("Dog" == "dog").',
+    keywordVsVector:
+      'Keyword search treats words as isolated string tokens. Vector search embeds whole sentence concepts into mathematical vectors.',
+  },
+  2: {
+    title: 'Step 2: Stop-Word Removal',
+    subtitle: 'Filtering out common structural filler words',
+    whatItIs:
+      'Identifies and discards common words like "the", "a", "is", "at" that carry little search intent.',
+    whyItMatters:
+      'Prevents false positive matches on non-descriptive filler words.',
+    keywordVsVector:
+      'Keyword search must manually remove stop words to prevent noise. Vector embeddings naturally weight term importance contextually.',
+  },
+  3: {
+    title: 'Step 3: Inverted Index Table',
+    subtitle: 'The "back-of-the-book" term-to-document lookup index',
+    whatItIs:
+      'A lookup table mapping every unique word in the corpus to the list of document IDs where it appears.',
+    whyItMatters:
+      'Allows instantaneous lookup without scanning through every document line-by-line.',
+    keywordVsVector:
+      'Inverted indices store exact text keys. Vector database indices (HNSW, IVF) build spatial proximity graphs of embedding vectors.',
+  },
+  4: {
+    title: 'Step 4: Lexical Overlap Ranking',
+    subtitle: 'Calculating exact word match percentage',
+    whatItIs:
+      'Ranks documents based on what percentage of active query tokens appear literally in the document text.',
+    whyItMatters:
+      'Fast and exact for known names, SKUs, and exact quotes.',
+    keywordVsVector:
+      'If the query uses synonyms ("speedy" vs "quick"), keyword match score drops to 0%. Vector search understands semantic equivalence.',
+  },
+};
+
 const StepBadge: React.FC<{ n: number; color: 'blue' | 'amber' | 'indigo' | 'green' }> = ({ n, color }) => {
   const colors = {
     blue:   'bg-blue-600 text-white',
@@ -29,7 +72,6 @@ const StepBadge: React.FC<{ n: number; color: 'blue' | 'amber' | 'indigo' | 'gre
   );
 };
 
-// Card wrapper
 const StepCard: React.FC<{ children: React.ReactNode; accent: 'blue' | 'amber' | 'indigo' | 'green' }> = ({ children, accent }) => {
   const borders = {
     blue:   'border-l-blue-500',
@@ -38,7 +80,7 @@ const StepCard: React.FC<{ children: React.ReactNode; accent: 'blue' | 'amber' |
     green:  'border-l-green-500',
   };
   return (
-    <div className={`bg-white border border-gray-200 border-l-4 ${borders[accent]} rounded-xl shadow-sm overflow-hidden`}>
+    <div className={`bg-white border border-gray-200 border-l-4 ${borders[accent]} rounded-xl shadow-xs overflow-hidden`}>
       {children}
     </div>
   );
@@ -52,27 +94,33 @@ export const KeywordVisualizer: React.FC<KeywordVisualizerProps> = ({
   keywordResults,
   documents,
 }) => {
+  const [activeInfoStep, setActiveInfoStep] = useState<number | null>(null);
   const invertedIndex: InvertedIndexEntry[] = generateInvertedIndex(documents);
 
   return (
     <div className="space-y-5 animate-fade-in-up">
+      {/* Interactive Info Modal */}
+      <ConceptInfoModal
+        info={activeInfoStep ? KEYWORD_CONCEPT_INFOS[activeInfoStep] : null}
+        onClose={() => setActiveInfoStep(null)}
+      />
 
       {/* ── Module Header ── */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-xs px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
             <BookOpen className="w-4.5 h-4.5 text-amber-600" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-gray-900">Keyword (Lexical) Search</h2>
+            <h2 className="text-base font-semibold text-gray-900">Keyword (Lexical) Search Engine</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Traditional exact-string matching — stop-word removal → inverted index → literal overlap ranking
+              Traditional exact-string matching — tokenization → stop-word removal → inverted index → literal overlap
             </p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium self-start sm:self-auto flex-shrink-0">
           <ShieldAlert className="w-3.5 h-3.5" />
-          Synonym blind spot
+          Synonym Blind Spot
         </div>
       </div>
 
@@ -82,12 +130,22 @@ export const KeywordVisualizer: React.FC<KeywordVisualizerProps> = ({
         {/* STEP 1 — Tokenization */}
         <StepCard accent="blue">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-            <span className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+            <div className="flex items-center gap-2">
               <StepBadge n={1} color="blue" />
-              Tokenization
-            </span>
+              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                Step 1: Tokenization
+              </span>
+              <button
+                onClick={() => setActiveInfoStep(1)}
+                className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                title="Explain Step 1"
+              >
+                <Info className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <span className="text-xs text-gray-400">{tokens.length} raw token{tokens.length !== 1 ? 's' : ''}</span>
           </div>
+
           <div className="px-5 py-4 space-y-3">
             <p className="text-xs text-gray-500">
               Query split into lowercase word blocks. Stop words are flagged for removal.
@@ -118,12 +176,22 @@ export const KeywordVisualizer: React.FC<KeywordVisualizerProps> = ({
         {/* STEP 2 — Stop-Word Filter */}
         <StepCard accent="amber">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-            <span className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+            <div className="flex items-center gap-2">
               <StepBadge n={2} color="amber" />
-              Stop-Word Filter
-            </span>
+              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                Step 2: Stop-Word Filter
+              </span>
+              <button
+                onClick={() => setActiveInfoStep(2)}
+                className="p-1 text-gray-400 hover:text-amber-600 transition-colors"
+                title="Explain Step 2"
+              >
+                <Info className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <span className="text-xs text-amber-600">{filteredStopWords.length} filtered</span>
           </div>
+
           <div className="px-5 py-4">
             <div className="grid grid-cols-2 gap-3">
               {/* Kept */}
@@ -167,12 +235,22 @@ export const KeywordVisualizer: React.FC<KeywordVisualizerProps> = ({
         {/* STEP 3 — Inverted Index Table */}
         <StepCard accent="indigo">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-            <span className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+            <div className="flex items-center gap-2">
               <StepBadge n={3} color="indigo" />
-              Inverted Index
-            </span>
-            <span className="text-xs text-gray-400">"Back-of-book" lookup table</span>
+              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                Step 3: Inverted Index
+              </span>
+              <button
+                onClick={() => setActiveInfoStep(3)}
+                className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"
+                title="Explain Step 3"
+              >
+                <Info className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <span className="text-xs text-gray-400">Term Lookup Table</span>
           </div>
+
           <div className="overflow-auto max-h-52">
             <table className="w-full text-xs border-collapse">
               <thead>
@@ -221,12 +299,22 @@ export const KeywordVisualizer: React.FC<KeywordVisualizerProps> = ({
         {/* STEP 4 — Lexical Match Score Ranking */}
         <StepCard accent="green">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-            <span className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+            <div className="flex items-center gap-2">
               <StepBadge n={4} color="green" />
-              Match Score Ranking
-            </span>
-            <span className="text-xs text-gray-400">Strict character overlap</span>
+              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                Step 4: Lexical Overlap Ranking
+              </span>
+              <button
+                onClick={() => setActiveInfoStep(4)}
+                className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+                title="Explain Step 4"
+              >
+                <Info className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <span className="text-xs text-gray-400">Strict Character Overlap</span>
           </div>
+
           <div className="px-5 py-4 space-y-2 max-h-52 overflow-y-auto">
             {keywordResults.map((result) => {
               const isZero = result.matchScore === 0;
@@ -244,11 +332,11 @@ export const KeywordVisualizer: React.FC<KeywordVisualizerProps> = ({
                       <span className="text-xs font-semibold text-gray-800 truncate">{result.doc.title}</span>
                       {isZero ? (
                         <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-600 border border-red-200 flex-shrink-0">
-                          <AlertTriangle className="w-3 h-3" /> 0%
+                          <AlertTriangle className="w-3 h-3" /> 0% Match
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 border border-green-200 flex-shrink-0">
-                          <CheckCircle2 className="w-3 h-3" /> {result.matchScore}%
+                          <CheckCircle2 className="w-3 h-3" /> {result.matchScore}% Match
                         </span>
                       )}
                     </div>

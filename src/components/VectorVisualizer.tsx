@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Cpu, Target, Compass, Code, Copy, Check, Info } from 'lucide-react';
-import { Document, DomainConfig, VectorSearchResult } from '../lib/types';
+import { Cpu, Target, Compass, Code, Copy, Check, Info, Radio } from 'lucide-react';
+import { Document, DomainConfig, VectorSearchResult, ConceptInfo } from '../lib/types';
 import { DOMAIN_CONFIGS } from '../lib/domains';
+import { ConceptInfoModal } from './ConceptInfoModal';
 
 interface VectorVisualizerProps {
   query: string;
@@ -14,7 +15,59 @@ interface VectorVisualizerProps {
   documents: Document[];
 }
 
-// Reusable step badge
+const VECTOR_CONCEPT_INFOS: Record<number, ConceptInfo> = {
+  1: {
+    title: 'Stage 1: Text-to-Vector Embedding',
+    subtitle: 'Translating text into dense mathematical arrays',
+    whatItIs:
+      'An embedding model analyzes your query string and converts it into a normalized 4-dimensional numerical array. Each number represents a position along a semantic axis.',
+    whyItMatters:
+      'Computers cannot naturally understand words like "canine" or "speed". Converting text to numbers enables mathematical similarity calculations.',
+    keywordVsVector:
+      'Keyword search matches literal text string characters ("dog" == "dog"). Vector search converts text into geometric coordinates in concept space.',
+  },
+  2: {
+    title: 'Stage 2: Concept Weights ("Inspect the Brain")',
+    subtitle: 'Deconstructing query meaning across domain dimensions',
+    whatItIs:
+      'Shows the percentage activation of your query across domain concepts (e.g. Canine, Speed, Food, Rest). Values range from 0% to 100%.',
+    whyItMatters:
+      'Lets you inspect how the AI model interprets the conceptual emphasis of your input prompt.',
+    keywordVsVector:
+      'Keywords check binary word presence (yes/no). Vector weights measure gradations of meaning across multiple dimensions simultaneously.',
+  },
+  3: {
+    title: 'Stage 3: 2D Spatial Coordinate Projection',
+    subtitle: 'Mapping multi-dimensional vectors onto a visual 2D plane',
+    whatItIs:
+      'High-dimensional vectors (4D) are projected onto a 2D coordinate grid (X, Y) using dimensionality reduction, preserving relative concept distances.',
+    whyItMatters:
+      'Allows human eyes to visually grasp how concepts cluster together spatially on a 2D canvas.',
+    keywordVsVector:
+      'Keyword search has no spatial representation. Vector search places semantically related items close to each other on a map.',
+  },
+  4: {
+    title: 'Stage 4: Laser Proximity Scan & Similarity Metrics',
+    subtitle: 'Scanning nearest neighbors using Cosine Similarity and Euclidean Distance',
+    whatItIs:
+      'Measures the angular similarity S = (A · B) / (||A|| ||B||) and physical spatial distance between the query target node and all document nodes in memory.',
+    whyItMatters:
+      'The documents closest to the query node in vector space are your most semantically relevant search results!',
+    keywordVsVector:
+      'Keywords count exact word occurrences. Proximity scanning measures true conceptual distance regardless of exact vocabulary used.',
+  },
+  5: {
+    title: 'Stage 5: Raw Vector Database Payload Inspector',
+    subtitle: 'Examining what a production Vector DB (e.g. Pinecone, Qdrant) returns',
+    whatItIs:
+      'Inspects the exact JSON payload returned by a vector database index including document ID, similarity score, 4D vector, and metadata payload.',
+    whyItMatters:
+      'Demonstrates how modern RAG and AI applications consume vector database search results programmatically.',
+    keywordVsVector:
+      'Traditional DBs return row rows matching string queries. Vector DBs return similarity rankings and vector embedding payloads.',
+  },
+};
+
 const StepBadge: React.FC<{ n: number; color: 'blue' | 'indigo' | 'violet' | 'green' | 'teal' }> = ({ n, color }) => {
   const colors = {
     blue:   'bg-blue-600 text-white',
@@ -30,7 +83,6 @@ const StepBadge: React.FC<{ n: number; color: 'blue' | 'indigo' | 'violet' | 'gr
   );
 };
 
-// Reusable card with left accent
 const StageCard: React.FC<{ children: React.ReactNode; accent: 'blue' | 'indigo' | 'violet' | 'green' | 'teal' }> = ({ children, accent }) => {
   const borders = {
     blue:   'border-l-blue-500',
@@ -40,7 +92,7 @@ const StageCard: React.FC<{ children: React.ReactNode; accent: 'blue' | 'indigo'
     teal:   'border-l-teal-500',
   };
   return (
-    <div className={`bg-white border border-gray-200 border-l-4 ${borders[accent]} rounded-xl shadow-sm overflow-hidden`}>
+    <div className={`bg-white border border-gray-200 border-l-4 ${borders[accent]} rounded-xl shadow-xs overflow-hidden`}>
       {children}
     </div>
   );
@@ -56,10 +108,12 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
   const currentDomainConfig: DomainConfig =
     DOMAIN_CONFIGS[activeDomain as keyof typeof DOMAIN_CONFIGS] || DOMAIN_CONFIGS.animals;
 
+  const [activeInfoStage, setActiveInfoStage] = useState<number | null>(null);
   const [hoveredNode, setHoveredNode] = useState<{
     id: string;
     title: string;
     score: number;
+    distance: number;
     coords: { x: number; y: number };
   } | null>(null);
   const [selectedResultDoc, setSelectedResultDoc] = useState<VectorSearchResult>(
@@ -97,30 +151,36 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
 
   return (
     <div className="space-y-5 animate-fade-in-up">
+      {/* Interactive Info Modal */}
+      <ConceptInfoModal
+        info={activeInfoStage ? VECTOR_CONCEPT_INFOS[activeInfoStage] : null}
+        onClose={() => setActiveInfoStage(null)}
+      />
 
       {/* ── Module Header ── */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-xs px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0">
             <Cpu className="w-4.5 h-4.5 text-blue-600" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-gray-900">Vector (Semantic) Search</h2>
+            <h2 className="text-base font-semibold text-gray-900">Vector (Semantic) Search Engine</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              5 stages: Text → Vector → Concept Weights → 2D Plot → Proximity Ranking → DB Record
+              5-stage visual pipeline: Text → Embeddings → Weights → Spatial Plot → Proximity Scan → JSON Payload
             </p>
           </div>
         </div>
+
         {/* Top-K Control */}
         <div className="flex items-center gap-2 flex-shrink-0 self-start sm:self-auto">
           <label htmlFor="topk-select" className="text-xs text-gray-500 font-medium">
-            Top-K filter:
+            Top-K Proximity Filter:
           </label>
           <select
             id="topk-select"
             value={topK}
             onChange={(e) => setTopK(Number(e.target.value))}
-            className="bg-gray-50 border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            className="bg-gray-50 border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
           >
             <option value={1}>Top 1</option>
             <option value={2}>Top 2</option>
@@ -136,27 +196,39 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
         {/* STAGE 1 — Text-to-Vector Mapping */}
         <StageCard accent="blue">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-            <span className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+            <div className="flex items-center gap-2">
               <StepBadge n={1} color="blue" />
-              Text → Vector Mapping
-            </span>
-            <span className="text-[11px] text-blue-600 font-mono font-medium">Dense 4D</span>
+              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                Stage 1: Text → Vector Embedding
+              </span>
+              <button
+                onClick={() => setActiveInfoStage(1)}
+                className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                title="Explain Stage 1"
+              >
+                <Info className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <span className="text-[11px] text-blue-600 font-mono font-medium">Dense 4D Vector</span>
           </div>
+
           <div className="px-5 py-4 space-y-3">
             <div className="rounded-lg bg-gray-50 border border-gray-200 px-3.5 py-3 space-y-1">
-              <span className="text-[11px] text-gray-400 font-medium">Active query</span>
-              <p className="text-sm font-semibold text-gray-900">"{query || 'Type a prompt…'}"</p>
+              <span className="text-[11px] text-gray-400 font-medium">Input Query:</span>
+              <p className="text-sm font-semibold text-gray-900">
+                "{query || <span className="text-gray-400 font-normal italic">Type a search prompt above...</span>}"
+              </p>
             </div>
-            <div className="rounded-lg bg-blue-50 border border-blue-200 px-3.5 py-3 space-y-2.5">
+            <div className="rounded-lg bg-blue-50/70 border border-blue-200 px-3.5 py-3 space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-blue-700">L2-Normalized Vector</span>
-                <span className="text-[10px] font-mono text-blue-500">4 dimensions</span>
+                <span className="text-[11px] font-semibold text-blue-700">L2-Normalized Vector Array:</span>
+                <span className="text-[10px] font-mono text-blue-500">4 Dimensions</span>
               </div>
               <div className="grid grid-cols-2 gap-2 font-mono">
                 {queryVector.map((val, idx) => (
                   <div
                     key={idx}
-                    className="flex flex-col gap-0.5 bg-white border border-blue-200 rounded-lg px-3 py-2"
+                    className="flex flex-col gap-0.5 bg-white border border-blue-200 rounded-lg px-3 py-2 shadow-2xs"
                   >
                     <span className="text-[10px] text-gray-400 truncate">
                       {currentDomainConfig.dimensions[idx]}
@@ -174,12 +246,22 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
         {/* STAGE 2 — Concept Weight Radar */}
         <StageCard accent="indigo">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-            <span className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+            <div className="flex items-center gap-2">
               <StepBadge n={2} color="indigo" />
-              Concept Weights
-            </span>
-            <span className="text-[11px] text-indigo-600 font-medium">Inspect the brain</span>
+              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                Stage 2: Concept Weights
+              </span>
+              <button
+                onClick={() => setActiveInfoStage(2)}
+                className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"
+                title="Explain Stage 2"
+              >
+                <Info className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <span className="text-[11px] text-indigo-600 font-medium">"Inspect the Brain"</span>
           </div>
+
           <div className="px-5 py-4 space-y-3">
             {currentDomainConfig.dimensions.map((dimLabel, idx) => {
               const weightVal = queryVector[idx] || 0;
@@ -204,176 +286,216 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
 
       </div>
 
-      {/* ── Stages 3 & 4 — 2D Spatial Canvas ── */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+      {/* ── STAGE 3: 2D SPATIAL COORDINATE PLOT ── */}
+      <StageCard accent="violet">
         <div className="px-5 py-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-violet-50 border border-violet-200 flex items-center justify-center flex-shrink-0">
-              <Compass className="w-4 h-4 text-violet-600" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-800">
-                <span className="mr-1">
-                  <StepBadge n={3} color="violet" />
-                </span>
-                <span className="ml-1">2D Spatial Plot &</span>
-                <span className="ml-1">
-                  <StepBadge n={4} color="violet" />
-                </span>
-                <span className="ml-1">Proximity Scan</span>
-              </h3>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 text-xs flex-shrink-0">
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-blue-600 border-2 border-blue-200 flex-shrink-0" />
-              <span className="text-gray-500">Query</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-indigo-500 flex-shrink-0" />
-              <span className="text-gray-500">Top-K matches</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-gray-300 flex-shrink-0" />
-              <span className="text-gray-400">Other docs</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Educational Note */}
-        <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-lg bg-blue-50 border border-blue-200 flex items-start gap-2 text-xs text-blue-700">
-          <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-          <span>
-            <strong>Educational note:</strong> Multi-dimensional vectors are projected onto 2D, like a 3D shadow on a flat wall — relative distances between concepts are preserved.
-          </span>
-        </div>
-
-        {/* SVG Canvas */}
-        <div className="relative w-full h-80 sm:h-96 mx-auto bg-gray-50 m-4 rounded-xl border border-gray-200 overflow-hidden select-none" style={{ width: 'calc(100% - 2rem)' }}>
-          {/* Dot grid */}
-          <div
-            className="absolute inset-0 opacity-60 pointer-events-none"
-            style={{
-              backgroundImage: 'radial-gradient(circle, #d1d5db 1px, transparent 1px)',
-              backgroundSize: '20px 20px',
-            }}
-          />
-
-          {/* SVG: lines and rings */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none">
-            {/* Proximity circle */}
-            <circle
-              cx={`${queryCoords.x}%`}
-              cy={`${queryCoords.y}%`}
-              r="60"
-              fill="rgba(37,99,235,0.04)"
-              stroke="rgba(37,99,235,0.2)"
-              strokeWidth="1"
-              strokeDasharray="6 3"
-            />
-            {/* Laser lines to Top-K */}
-            {vectorResults.slice(0, topK).map((res) => (
-              <line
-                key={`line-${res.doc.id}`}
-                x1={`${queryCoords.x}%`}
-                y1={`${queryCoords.y}%`}
-                x2={`${res.doc.coords.x}%`}
-                y2={`${res.doc.coords.y}%`}
-                stroke="rgba(99,102,241,0.5)"
-                strokeWidth="1.5"
-                strokeDasharray="5 4"
-              />
-            ))}
-          </svg>
-
-          {/* Document nodes */}
-          {vectorResults.map((res) => {
-            const isTopK = res.rank <= topK;
-            const isSelected = activeSelectedDoc?.doc.id === res.doc.id;
-            return (
-              <div
-                key={res.doc.id}
-                onClick={() => setSelectedResultDoc(res)}
-                onMouseEnter={() =>
-                  setHoveredNode({
-                    id: res.doc.id,
-                    title: res.doc.title,
-                    score: res.similarity,
-                    coords: res.doc.coords,
-                  })
-                }
-                onMouseLeave={() => setHoveredNode(null)}
-                style={{ left: `${res.doc.coords.x}%`, top: `${res.doc.coords.y}%` }}
-                className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-transform duration-200 z-10 ${
-                  isSelected ? 'scale-125 z-30' : 'hover:scale-110 z-20'
-                }`}
-              >
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shadow-md border-2 transition-all ${
-                    res.doc.isCustom
-                      ? 'bg-green-500 border-green-200 text-white shadow-green-200'
-                      : isTopK
-                      ? 'bg-indigo-600 border-indigo-200 text-white shadow-indigo-200'
-                      : 'bg-white border-gray-300 text-gray-500 shadow-gray-100'
-                  }`}
-                >
-                  {res.rank}
-                </div>
-                <div
-                  className={`absolute left-1/2 -translate-x-1/2 top-full mt-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold whitespace-nowrap border ${
-                    isTopK
-                      ? 'bg-white text-indigo-600 border-indigo-200 shadow-sm'
-                      : 'bg-white text-gray-400 border-gray-200'
-                  }`}
-                >
-                  {res.similarity}%
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Query node */}
-          <div
-            style={{ left: `${queryCoords.x}%`, top: `${queryCoords.y}%` }}
-            className="absolute -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none"
-          >
-            <div className="relative flex items-center justify-center">
-              <div className="w-10 h-10 rounded-full bg-blue-600 border-4 border-white shadow-lg shadow-blue-200 flex items-center justify-center">
-                <Target className="w-4 h-4 text-white" />
-              </div>
-            </div>
-            <div className="mt-1.5 px-2.5 py-1 rounded-full bg-blue-600 text-white border border-blue-700 text-[10px] font-bold text-center whitespace-nowrap shadow-md">
-              Query
-            </div>
-          </div>
-
-          {/* Hover tooltip */}
-          {hoveredNode && (
-            <div
-              style={{ left: `${hoveredNode.coords.x}%`, top: `${hoveredNode.coords.y}%` }}
-              className="absolute -translate-x-1/2 -translate-y-full -mt-3 bg-white border border-gray-200 text-gray-800 rounded-lg px-3 py-2 text-xs shadow-lg z-40 pointer-events-none whitespace-nowrap"
+            <StepBadge n={3} color="violet" />
+            <h3 className="text-sm font-semibold text-gray-800">
+              Stage 3: 2D Spatial Coordinate Projection
+            </h3>
+            <button
+              onClick={() => setActiveInfoStage(3)}
+              className="p-1 text-gray-400 hover:text-violet-600 transition-colors"
+              title="Explain Stage 3"
             >
-              <div className="font-semibold text-gray-900">{hoveredNode.title}</div>
-              <div className="text-gray-500 mt-0.5">
-                Similarity:{' '}
-                <span className={`font-bold ${hoveredNode.score >= 80 ? 'text-green-600' : 'text-indigo-600'}`}>
-                  {hoveredNode.score}%
-                </span>
-              </div>
-            </div>
-          )}
+              <Info className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="text-xs text-gray-500 font-mono">
+            Query Projected Coords: X={queryCoords.x}%, Y={queryCoords.y}%
+          </div>
         </div>
 
-        <div className="h-4" />
-      </div>
+        <div className="p-5 space-y-4">
+          <div className="text-xs text-gray-600 leading-relaxed bg-violet-50/50 p-3 rounded-lg border border-violet-200">
+            <strong>Dimensionality Reduction:</strong> 4D vectors are projected onto an $(X, Y)$ coordinate plane where items with similar semantic vectors cluster closely together.
+          </div>
 
-      {/* ── Stage 5 — Vector DB Payload Inspector ── */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+          {/* SVG 2D Canvas */}
+          <div className="relative w-full h-80 sm:h-96 bg-gray-50 rounded-xl border border-gray-200 overflow-hidden select-none">
+            {/* Grid Lines */}
+            <div
+              className="absolute inset-0 opacity-60 pointer-events-none"
+              style={{
+                backgroundImage: 'radial-gradient(circle, #d1d5db 1px, transparent 1px)',
+                backgroundSize: '20px 20px',
+              }}
+            />
+
+            {/* X & Y Axis Labels */}
+            <div className="absolute left-2 top-2 text-[10px] font-mono text-gray-400 font-bold">
+              Y-Axis ↑ (Rest / Comfort)
+            </div>
+            <div className="absolute right-2 bottom-2 text-[10px] font-mono text-gray-400 font-bold">
+              X-Axis → (Agility / Speed)
+            </div>
+
+            {/* Document Nodes Plot */}
+            {vectorResults.map((res) => {
+              const isTopK = res.rank <= topK;
+              const isSelected = activeSelectedDoc?.doc.id === res.doc.id;
+              return (
+                <div
+                  key={res.doc.id}
+                  onClick={() => setSelectedResultDoc(res)}
+                  onMouseEnter={() =>
+                    setHoveredNode({
+                      id: res.doc.id,
+                      title: res.doc.title,
+                      score: res.similarity,
+                      distance: res.distance,
+                      coords: res.doc.coords,
+                    })
+                  }
+                  onMouseLeave={() => setHoveredNode(null)}
+                  style={{ left: `${res.doc.coords.x}%`, top: `${res.doc.coords.y}%` }}
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-transform duration-200 z-10 ${
+                    isSelected ? 'scale-125 z-30' : 'hover:scale-110 z-20'
+                  }`}
+                >
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shadow-md border-2 transition-all ${
+                      res.doc.isCustom
+                        ? 'bg-green-500 border-green-200 text-white shadow-green-200'
+                        : isTopK
+                        ? 'bg-indigo-600 border-indigo-200 text-white shadow-indigo-200'
+                        : 'bg-white border-gray-300 text-gray-500 shadow-gray-100'
+                    }`}
+                  >
+                    {res.rank}
+                  </div>
+                  <div
+                    className={`absolute left-1/2 -translate-x-1/2 top-full mt-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold whitespace-nowrap border ${
+                      isTopK
+                        ? 'bg-white text-indigo-600 border-indigo-200 shadow-xs'
+                        : 'bg-white text-gray-400 border-gray-200'
+                    }`}
+                  >
+                    {res.similarity}%
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Query Target Node */}
+            <div
+              style={{ left: `${queryCoords.x}%`, top: `${queryCoords.y}%` }}
+              className="absolute -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none"
+            >
+              <div className="relative flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-blue-600 border-4 border-white shadow-lg shadow-blue-200 flex items-center justify-center">
+                  <Target className="w-4 h-4 text-white" />
+                </div>
+              </div>
+              <div className="mt-1.5 px-2.5 py-1 rounded-full bg-blue-600 text-white border border-blue-700 text-[10px] font-bold text-center whitespace-nowrap shadow-md">
+                🎯 Query Vector
+              </div>
+            </div>
+
+            {/* Hover Tooltip */}
+            {hoveredNode && (
+              <div
+                style={{ left: `${hoveredNode.coords.x}%`, top: `${hoveredNode.coords.y}%` }}
+                className="absolute -translate-x-1/2 -translate-y-full -mt-3 bg-white border border-gray-200 text-gray-800 rounded-lg px-3 py-2 text-xs shadow-lg z-40 pointer-events-none whitespace-nowrap"
+              >
+                <div className="font-semibold text-gray-900">{hoveredNode.title}</div>
+                <div className="text-gray-500 mt-0.5">
+                  Similarity: <span className="font-bold text-indigo-600">{hoveredNode.score}%</span> | Coords: ({hoveredNode.coords.x}, {hoveredNode.coords.y})
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </StageCard>
+
+      {/* ── STAGE 4: LASER PROXIMITY & NEAREST NEIGHBOR SCAN ── */}
+      <StageCard accent="teal">
         <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-          <span className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">
-            <StepBadge n={5} color="green" />
-            Vector DB Payload Inspector
+          <div className="flex items-center gap-2.5">
+            <StepBadge n={4} color="teal" />
+            <h3 className="text-sm font-semibold text-gray-800">
+              Stage 4: Laser Proximity & Nearest-Neighbor Distance Scan
+            </h3>
+            <button
+              onClick={() => setActiveInfoStage(4)}
+              className="p-1 text-gray-400 hover:text-teal-600 transition-colors"
+              title="Explain Stage 4"
+            >
+              <Info className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <span className="text-xs text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+            Cosine Similarity Metric
           </span>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-teal-50/60 p-3 rounded-lg border border-teal-200 text-xs text-teal-900">
+            <div className="flex items-center gap-2">
+              <Radio className="w-4 h-4 text-teal-600 flex-shrink-0" />
+              <span>
+                <strong>Laser Scanning Active:</strong> Connecting query target to top {topK} nearest neighbor document vectors in coordinate space.
+              </span>
+            </div>
+            <div className="font-mono text-[11px] font-bold text-teal-800">
+              Metric: Cosine Similarity S = (A · B) / (||A|| ||B||)
+            </div>
+          </div>
+
+          {/* Near-Neighbor Distance Ranking Table */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              Top-{topK} Nearest Neighbor Distance Readings
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {vectorResults.slice(0, topK).map((res) => (
+                <div
+                  key={res.doc.id}
+                  onClick={() => setSelectedResultDoc(res)}
+                  className={`p-3 rounded-xl border transition-colors cursor-pointer ${
+                    activeSelectedDoc?.doc.id === res.doc.id
+                      ? 'bg-teal-50 border-teal-300 ring-2 ring-teal-200'
+                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-gray-800 truncate">
+                      #{res.rank} {res.doc.title}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-teal-700">
+                      {res.similarity}% match
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 line-clamp-1">"{res.doc.content}"</p>
+                  <div className="mt-2 pt-2 border-t border-gray-200 flex items-center justify-between text-[10px] font-mono text-gray-500">
+                    <span>Dist: {res.distance.toFixed(3)}</span>
+                    <span className="text-teal-600 font-semibold">Laser Locked</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </StageCard>
+
+      {/* ── STAGE 5: RAW VECTOR DB PAYLOAD INSPECTOR ── */}
+      <StageCard accent="green">
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <StepBadge n={5} color="green" />
+            <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              Stage 5: Raw Vector Database Payload Inspector
+            </span>
+            <button
+              onClick={() => setActiveInfoStage(5)}
+              className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+              title="Explain Stage 5"
+            >
+              <Info className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           <button
             onClick={handleCopyJSON}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium transition-colors cursor-pointer border border-gray-200"
@@ -402,7 +524,7 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
                     onClick={() => setSelectedResultDoc(res)}
                     className={`w-full text-left px-3 py-2.5 rounded-lg border text-xs transition-colors cursor-pointer flex items-center justify-between gap-2 ${
                       isSelected
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
                         : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 hover:border-gray-300'
                     }`}
                   >
@@ -461,7 +583,7 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
             )}
           </div>
         </div>
-      </div>
+      </StageCard>
 
     </div>
   );

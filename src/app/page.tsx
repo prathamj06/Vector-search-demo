@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Cpu, BookOpen, Columns } from 'lucide-react';
-import { DomainType } from '../lib/types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Cpu, BookOpen, Columns, Sliders, Database } from 'lucide-react';
+import { DomainType, ComplexityLevel } from '../lib/types';
 import { DOMAIN_CONFIGS } from '../lib/domains';
 import { performKeywordSearch } from '../lib/keywordEngine';
 import { performVectorSearch } from '../lib/vectorEngine';
@@ -11,27 +11,49 @@ import { ChallengeBanner } from '../components/ChallengeBanner';
 import { KeywordVisualizer } from '../components/KeywordVisualizer';
 import { VectorVisualizer } from '../components/VectorVisualizer';
 import { ComparisonMatrix } from '../components/ComparisonMatrix';
+import { CorpusDrawer } from '../components/CorpusDrawer';
+import { OnboardingModal } from '../components/OnboardingModal';
 import { useDocumentStore } from '../lib/useDocumentStore';
 
 type ActiveTab = 'vector' | 'keyword' | 'comparison';
 
 export default function Home() {
   const [activeDomain, setActiveDomain] = useState<DomainType>('animals');
-  const [query, setQuery] = useState('speedy dog');
+  const [query, setQuery] = useState<string>(''); // Default empty to encourage independent exploration
   const [activeTab, setActiveTab] = useState<ActiveTab>('vector');
+  const [complexity, setComplexity] = useState<ComplexityLevel>('beginner');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(false);
+
   const { documents, setDocuments, resetToDefaults } = useDocumentStore(activeDomain);
 
-  // Update query preset on domain change
+  // Auto-open onboarding tour on first visit
   useEffect(() => {
-    setQuery(DOMAIN_CONFIGS[activeDomain].samplePrompts[0] || '');
-  }, [activeDomain]);
+    if (typeof window !== 'undefined') {
+      const hasSeenTour = localStorage.getItem('vsd-seen-tour-v1');
+      if (!hasSeenTour) {
+        setIsTourOpen(true);
+        localStorage.setItem('vsd-seen-tour-v1', 'true');
+      }
+    }
+  }, []);
 
-  // Compute search results
+  // Filter active dataset based on Complexity Control
+  const filteredDocuments = useMemo(() => {
+    return documents.filter((doc) => {
+      if (doc.isCustom) return true; // Always include user-added custom docs
+      if (complexity === 'beginner') return doc.complexity === 'beginner' || !doc.complexity;
+      if (complexity === 'standard') return doc.complexity === 'beginner' || doc.complexity === 'standard' || !doc.complexity;
+      return true; // Advanced includes all
+    });
+  }, [documents, complexity]);
+
+  // Compute search results against filtered dataset
   const { tokens, activeTokens, filteredStopWords, results: keywordResults } =
-    performKeywordSearch(query, documents);
+    performKeywordSearch(query, filteredDocuments);
 
   const { queryVector, queryCoords, results: vectorResults } =
-    performVectorSearch(query, documents);
+    performVectorSearch(query, filteredDocuments);
 
   const tabs: { id: ActiveTab; label: string; icon: React.ReactNode; color: string }[] = [
     {
@@ -55,51 +77,110 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] text-gray-900 flex flex-col">
+    <div className="min-h-screen bg-[#F9FAFB] text-gray-900 flex flex-col relative">
+
+      {/* Floating Side Tab Trigger for Database Portal Drawer */}
+      <button
+        onClick={() => setIsDrawerOpen(true)}
+        className="fixed right-0 top-1/3 z-30 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 px-3 rounded-l-xl shadow-lg flex items-center gap-1.5 transition-transform hover:-translate-x-1 cursor-pointer"
+        title="Open Database Portal Drawer"
+      >
+        <Database className="w-4 h-4" />
+        <span className="hidden md:inline">Database Portal</span>
+      </button>
+
+      {/* Header Bar */}
       <Header
         query={query}
         setQuery={setQuery}
         activeDomain={activeDomain}
         setActiveDomain={setActiveDomain}
+        onOpenDrawer={() => setIsDrawerOpen(true)}
+        onOpenTour={() => setIsTourOpen(true)}
+      />
+
+      {/* Onboarding Tour Modal */}
+      <OnboardingModal
+        isOpen={isTourOpen}
+        onClose={() => setIsTourOpen(false)}
+        onOpenDrawer={() => setIsDrawerOpen(true)}
+        onSelectPrompt={(p) => setQuery(p)}
+      />
+
+      {/* Slide-out Database Portal Drawer */}
+      <CorpusDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        documents={documents}
+        setDocuments={setDocuments}
+        activeDomain={activeDomain}
+        resetToDefaults={resetToDefaults}
       />
 
       <main id="main-content" className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-6 space-y-5">
 
-        {/* ── Tab Navigation ── */}
-        <nav aria-label="Visualizer tabs">
-          <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-full sm:w-auto inline-flex">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              const colorMap = {
-                blue:  isActive ? 'text-blue-700'  : 'text-gray-500 hover:text-gray-700',
-                amber: isActive ? 'text-amber-700' : 'text-gray-500 hover:text-gray-700',
-                gray:  isActive ? 'text-gray-800'  : 'text-gray-500 hover:text-gray-700',
-              };
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-controls={`panel-${tab.id}`}
-                  id={`tab-${tab.id}`}
-                  className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-white shadow-sm text-gray-900'
-                      : colorMap[tab.color as keyof typeof colorMap]
-                  }`}
-                >
-                  <span className={isActive ? (tab.color === 'blue' ? 'text-blue-600' : tab.color === 'amber' ? 'text-amber-600' : 'text-gray-600') : 'text-gray-400'}>
-                    {tab.icon}
-                  </span>
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
+        {/* ── Control Bar: Tab Navigation + Dataset Complexity Control ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Tab Navigation */}
+          <nav aria-label="Visualizer tabs">
+            <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-full sm:w-auto inline-flex">
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                const colorMap = {
+                  blue:  isActive ? 'text-blue-700'  : 'text-gray-500 hover:text-gray-700',
+                  amber: isActive ? 'text-amber-700' : 'text-gray-500 hover:text-gray-700',
+                  gray:  isActive ? 'text-gray-800'  : 'text-gray-500 hover:text-gray-700',
+                };
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls={`panel-${tab.id}`}
+                    id={`tab-${tab.id}`}
+                    className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-white shadow-xs text-gray-900'
+                        : colorMap[tab.color as keyof typeof colorMap]
+                    }`}
+                  >
+                    <span className={isActive ? (tab.color === 'blue' ? 'text-blue-600' : tab.color === 'amber' ? 'text-amber-600' : 'text-gray-600') : 'text-gray-400'}>
+                      {tab.icon}
+                    </span>
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
 
-        {/* ── Challenge Strip (below tabs, contextual) ── */}
+          {/* Dynamic Dataset Complexity Control */}
+          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-2xs self-start sm:self-auto">
+            <Sliders className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+            <span className="text-xs text-gray-500 font-medium">Dataset Complexity:</span>
+            <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
+              {(['beginner', 'standard', 'advanced'] as ComplexityLevel[]).map((level) => (
+                <button
+                  key={level}
+                  onClick={() => setComplexity(level)}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold capitalize transition-all cursor-pointer ${
+                    complexity === level
+                      ? 'bg-white text-blue-700 shadow-2xs'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  title={`Switch to ${level} dataset (${
+                    level === 'beginner' ? '3 items' : level === 'standard' ? '6 items' : '8 items'
+                  })`}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Challenge Strip (contextual) ── */}
         <ChallengeBanner
           query={query}
           setQuery={setQuery}
@@ -108,7 +189,7 @@ export default function Home() {
           vectorResults={vectorResults}
         />
 
-        {/* ── Tab Panels ── */}
+        {/* ── Active Tab Panel ── */}
         <div className="animate-fade-in-up">
           {activeTab === 'vector' && (
             <div id="panel-vector" role="tabpanel" aria-labelledby="tab-vector">
@@ -118,7 +199,7 @@ export default function Home() {
                 queryCoords={queryCoords}
                 vectorResults={vectorResults}
                 activeDomain={activeDomain}
-                documents={documents}
+                documents={filteredDocuments}
               />
             </div>
           )}
@@ -131,7 +212,7 @@ export default function Home() {
                 activeTokens={activeTokens}
                 filteredStopWords={filteredStopWords}
                 keywordResults={keywordResults}
-                documents={documents}
+                documents={filteredDocuments}
               />
             </div>
           )}
@@ -151,8 +232,8 @@ export default function Home() {
 
       <footer className="border-t border-gray-200 bg-white mt-auto">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-400">
-          <p>Vector vs. Keyword Search — Interactive Learning Tool</p>
-          <p>100% client-side · No server · No tracking</p>
+          <p>Vector vs. Keyword Search — Interactive Educational Tool</p>
+          <p>100% client-side in-browser memory engine</p>
         </div>
       </footer>
     </div>
