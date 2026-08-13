@@ -251,7 +251,7 @@ export const KeywordVisualizer: React.FC<KeywordVisualizerProps> = ({
             <span className="text-xs text-gray-400">Term Lookup Table</span>
           </div>
 
-          <div className="overflow-auto max-h-52">
+          <div className="overflow-auto max-h-[550px]">
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-semibold uppercase tracking-wider text-[11px]">
@@ -315,7 +315,20 @@ export const KeywordVisualizer: React.FC<KeywordVisualizerProps> = ({
             <span className="text-xs text-gray-400">Strict Character Overlap</span>
           </div>
 
-          <div className="px-5 py-4 space-y-2 max-h-52 overflow-y-auto">
+          <div className="px-5 py-4 space-y-3 max-h-[550px] overflow-y-auto">
+            {/* Zero-Match Empty State Banner */}
+            {query.trim() !== '' && keywordResults.every((r) => r.matchScore === 0) && (
+              <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <strong className="font-bold">No matches found</strong>
+                  <p className="text-[11px] text-red-600 mt-0.5">
+                    Zero exact keyword matches found for "{query}". Keyword search requires exact character token overlap and is blind to synonyms or related terms.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {keywordResults.map((result) => {
               const isZero = result.matchScore === 0;
               return (
@@ -323,7 +336,7 @@ export const KeywordVisualizer: React.FC<KeywordVisualizerProps> = ({
                   key={result.doc.id}
                   className={`rounded-lg border px-3.5 py-3 flex items-center gap-3 transition-colors ${
                     isZero
-                      ? 'bg-red-50 border-red-200'
+                      ? 'bg-red-50/60 border-red-200'
                       : 'bg-green-50 border-green-200'
                   }`}
                 >
@@ -340,7 +353,7 @@ export const KeywordVisualizer: React.FC<KeywordVisualizerProps> = ({
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-gray-400 truncate mt-0.5">"{result.doc.content}"</p>
+                    <p className="text-[11px] text-gray-500 truncate mt-0.5">"{result.doc.content}"</p>
                     {/* Score bar */}
                     <div className="mt-1.5 w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                       <div

@@ -79,15 +79,18 @@ export const CorpusDrawer: React.FC<CorpusDrawerProps> = ({
           </div>
 
           {/* Drawer Footer */}
-          <div className="px-6 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between text-xs text-gray-500">
-            <span>{documents.length} active documents</span>
+          <div className="p-4 border-t border-gray-200 bg-gray-50 flex flex-col gap-2">
             <button
               onClick={onClose}
-              className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-semibold cursor-pointer"
+              className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-bold rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all hover:shadow-lg"
+              title="Close Database Portal and return to visualizer"
             >
-              <span>Done Editing</span>
+              <span>Done Editing — Return to Visualizer</span>
               <ChevronRight className="w-4 h-4" />
             </button>
+            <p className="text-[11px] text-gray-400 text-center font-medium">
+              {documents.length} documents live in browser memory
+            </p>
           </div>
 
         </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Cpu, Target, Compass, Code, Copy, Check, Info, Radio } from 'lucide-react';
+import { Cpu, Target, Compass, Code, Copy, Check, Info, Radio, AlertTriangle, Star } from 'lucide-react';
 import { Document, DomainConfig, VectorSearchResult, ConceptInfo } from '../lib/types';
 import { DOMAIN_CONFIGS } from '../lib/domains';
 import { ConceptInfoModal } from './ConceptInfoModal';
@@ -308,33 +308,68 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
         </div>
 
         <div className="p-5 space-y-4">
-          <div className="text-xs text-gray-600 leading-relaxed bg-violet-50/50 p-3 rounded-lg border border-violet-200">
-            <strong>Dimensionality Reduction:</strong> 4D vectors are projected onto an $(X, Y)$ coordinate plane where items with similar semantic vectors cluster closely together.
+          {/* Dimensionality Reduction & Educational Concept Callout */}
+          <div className="space-y-3">
+            <div className="text-xs text-gray-700 leading-relaxed bg-violet-50/60 p-3 rounded-xl border border-violet-200">
+              <strong>Dimensionality Reduction:</strong> 4D vectors are projected onto an $(X, Y)$ coordinate plane where items with similar semantic vectors cluster closely together.
+            </div>
+
+            {/* Educational Explanation Box */}
+            <div className="bg-gradient-to-r from-violet-50 via-indigo-50 to-purple-50 border border-violet-200 rounded-xl p-3.5 text-xs text-violet-950 leading-relaxed shadow-2xs space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-violet-600 text-white flex items-center justify-center font-bold text-xs">
+                  💡
+                </span>
+                <strong className="text-violet-950 font-bold text-xs">
+                  Educational Concept: 2D Spatial Proximity vs. 4D Vector Ranking
+                </strong>
+              </div>
+              <p className="text-[11px] text-violet-900 leading-relaxed">
+                Vector rankings are computed using full <strong>4D Cosine Similarity</strong> (<em>S = (A · B) / (||A|| × ||B||)</em>), measuring angular similarity across all 4 concept dimensions. When these 4D vectors are projected down onto a 2D screen coordinate grid, spatial compression occurs.
+              </p>
+              <div className="text-[11px] text-slate-800 bg-white/90 p-2.5 rounded-lg border border-violet-200 font-medium space-y-1">
+                <span className="font-bold text-violet-900">Why rank #1 might look visually further in 2D projection:</span>
+                <p className="text-gray-700">
+                  For example, when searching <code className="bg-violet-100 px-1.5 py-0.5 rounded text-violet-900 font-mono text-[10px]">a speedy dog</code>, <em>"Fast Hound Tennis Chase"</em> may appear closer on the 2D visual map. However, <em>"Quick Canine Field Run"</em> is ranked <strong>#1</strong> because its 4D vector angle aligns most accurately with the query across all four domain dimensions (Canine, Speed, Food, Rest).
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* SVG 2D Canvas */}
-          <div className="relative w-full h-80 sm:h-96 bg-gray-50 rounded-xl border border-gray-200 overflow-hidden select-none">
+          <div className="relative w-full h-80 sm:h-96 bg-gray-50 rounded-xl border-2 border-gray-300 overflow-hidden select-none shadow-inner">
             {/* Grid Lines */}
             <div
               className="absolute inset-0 opacity-60 pointer-events-none"
               style={{
-                backgroundImage: 'radial-gradient(circle, #d1d5db 1px, transparent 1px)',
+                backgroundImage: 'radial-gradient(circle, #cbd5e1 1px, transparent 1px)',
                 backgroundSize: '20px 20px',
               }}
             />
 
-            {/* X & Y Axis Labels */}
-            <div className="absolute left-2 top-2 text-[10px] font-mono text-gray-400 font-bold">
-              Y-Axis ↑ (Rest / Comfort)
+            {/* High Contrast Solid Axis Lines */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+              {/* Y Axis Line */}
+              <line x1="28" y1="15" x2="28" y2="92%" stroke="#475569" strokeWidth="2.5" strokeDasharray="4 2" />
+              {/* X Axis Line */}
+              <line x1="24" y1="92%" x2="98%" y2="92%" stroke="#475569" strokeWidth="2.5" strokeDasharray="4 2" />
+            </svg>
+
+            {/* X & Y Axis High Contrast Labels */}
+            <div className="absolute left-3 top-3 text-[11px] font-mono bg-slate-900 text-white font-bold px-2 py-0.5 rounded shadow-sm z-10 flex items-center gap-1">
+              <span>Y-Axis ↑</span>
+              <span className="text-slate-300 font-normal">({currentDomainConfig.dimensions[3] || 'Rest / Comfort'})</span>
             </div>
-            <div className="absolute right-2 bottom-2 text-[10px] font-mono text-gray-400 font-bold">
-              X-Axis → (Agility / Speed)
+            <div className="absolute right-3 bottom-3 text-[11px] font-mono bg-slate-900 text-white font-bold px-2 py-0.5 rounded shadow-sm z-10 flex items-center gap-1">
+              <span>X-Axis →</span>
+              <span className="text-slate-300 font-normal">({currentDomainConfig.dimensions[1] || 'Agility / Speed'})</span>
             </div>
 
             {/* Document Nodes Plot */}
             {vectorResults.map((res) => {
               const isTopK = res.rank <= topK;
               const isSelected = activeSelectedDoc?.doc.id === res.doc.id;
+              const isRankOne = res.rank === 1;
               return (
                 <div
                   key={res.doc.id}
@@ -356,7 +391,9 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
                 >
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shadow-md border-2 transition-all ${
-                      res.doc.isCustom
+                      isRankOne
+                        ? 'bg-emerald-600 border-white text-white ring-2 ring-emerald-400 shadow-emerald-200'
+                        : res.doc.isCustom
                         ? 'bg-green-500 border-green-200 text-white shadow-green-200'
                         : isTopK
                         ? 'bg-indigo-600 border-indigo-200 text-white shadow-indigo-200'
@@ -367,7 +404,9 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
                   </div>
                   <div
                     className={`absolute left-1/2 -translate-x-1/2 top-full mt-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold whitespace-nowrap border ${
-                      isTopK
+                      isRankOne
+                        ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
+                        : isTopK
                         ? 'bg-white text-indigo-600 border-indigo-200 shadow-xs'
                         : 'bg-white text-gray-400 border-gray-200'
                     }`}
@@ -443,37 +482,69 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
             </div>
           </div>
 
+          {/* Zero-Match Empty State for Vector Search */}
+          {query.trim() !== '' && vectorResults[0]?.similarity < 15 && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <strong className="font-bold text-amber-950">No relevant matches found</strong>
+                <p className="text-[11px] text-amber-800 mt-0.5">
+                  No documents in the indexed database meet the minimum semantic relevance threshold for "{query}". All similarity scores fell below 15%.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Near-Neighbor Distance Ranking Table */}
           <div className="space-y-2">
             <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
               Top-{topK} Nearest Neighbor Distance Readings
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {vectorResults.slice(0, topK).map((res) => (
-                <div
-                  key={res.doc.id}
-                  onClick={() => setSelectedResultDoc(res)}
-                  className={`p-3 rounded-xl border transition-colors cursor-pointer ${
-                    activeSelectedDoc?.doc.id === res.doc.id
-                      ? 'bg-teal-50 border-teal-300 ring-2 ring-teal-200'
-                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold text-gray-800 truncate">
-                      #{res.rank} {res.doc.title}
-                    </span>
-                    <span className="text-xs font-mono font-bold text-teal-700">
-                      {res.similarity}% match
-                    </span>
+              {vectorResults.slice(0, topK).map((res) => {
+                const isRankOne = res.rank === 1;
+                const isSelected = activeSelectedDoc?.doc.id === res.doc.id;
+                return (
+                  <div
+                    key={res.doc.id}
+                    onClick={() => setSelectedResultDoc(res)}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer relative ${
+                      isRankOne
+                        ? 'border-2 border-emerald-500 bg-emerald-50/90 ring-2 ring-emerald-400/30 shadow-md'
+                        : isSelected
+                        ? 'bg-teal-50 border-teal-300 ring-2 ring-teal-200'
+                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5 gap-1">
+                      <span className="text-xs font-bold text-gray-900 truncate flex items-center gap-1">
+                        #{res.rank} {res.doc.title}
+                      </span>
+                      {isRankOne ? (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-600 text-white shadow-2xs flex-shrink-0">
+                          <Star className="w-3 h-3 fill-white" /> Top Match
+                        </span>
+                      ) : (
+                        <span className="text-xs font-mono font-bold text-teal-700 flex-shrink-0">
+                          {res.similarity}% match
+                        </span>
+                      )}
+                    </div>
+                    {isRankOne && (
+                      <div className="text-[10px] font-bold text-emerald-700 font-mono mb-1">
+                        Similarity Score: {res.similarity}%
+                      </div>
+                    )}
+                    <p className="text-[11px] text-gray-600 line-clamp-1">"{res.doc.content}"</p>
+                    <div className="mt-2 pt-2 border-t border-gray-200 flex items-center justify-between text-[10px] font-mono text-gray-500">
+                      <span>Dist: {res.distance.toFixed(3)}</span>
+                      <span className={isRankOne ? 'text-emerald-700 font-bold' : 'text-teal-600 font-semibold'}>
+                        {isRankOne ? '★ #1 Primary Match' : 'Laser Locked'}
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-gray-500 line-clamp-1">"{res.doc.content}"</p>
-                  <div className="mt-2 pt-2 border-t border-gray-200 flex items-center justify-between text-[10px] font-mono text-gray-500">
-                    <span>Dist: {res.distance.toFixed(3)}</span>
-                    <span className="text-teal-600 font-semibold">Laser Locked</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

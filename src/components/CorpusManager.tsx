@@ -136,7 +136,7 @@ export const CorpusManager: React.FC<CorpusManagerProps> = ({
         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
           Indexed documents ({documents.length})
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-72 overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[550px] overflow-y-auto pr-1">
           {documents.map((doc) => (
             <div
               key={doc.id}
@@ -146,11 +146,11 @@ export const CorpusManager: React.FC<CorpusManagerProps> = ({
                   : 'bg-white border-gray-200 hover:border-gray-300'
               }`}
             >
-              <div>
-                <div className="flex items-start justify-between gap-2 mb-1.5">
-                  <span className="text-xs font-semibold text-gray-800 truncate flex items-center gap-1.5">
-                    <FileText className={`w-3.5 h-3.5 flex-shrink-0 ${doc.isCustom ? 'text-green-500' : 'text-gray-400'}`} />
-                    {doc.title}
+              <div className="space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-xs font-bold text-gray-900 flex items-start gap-1.5 leading-snug break-words">
+                    <FileText className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${doc.isCustom ? 'text-green-500' : 'text-gray-400'}`} />
+                    <span>{doc.title}</span>
                   </span>
                   {doc.isCustom && (
                     <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-green-100 text-green-700 border border-green-200 flex-shrink-0">
@@ -158,17 +158,17 @@ export const CorpusManager: React.FC<CorpusManagerProps> = ({
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">
+                <p className="text-[11px] text-gray-600 leading-relaxed break-words font-normal bg-gray-50/70 p-2 rounded-lg border border-gray-100">
                   "{doc.content}"
                 </p>
               </div>
-              <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100 text-[10px]">
+              <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100 text-[10px]">
                 <span className="text-gray-400 font-mono">
-                  [{doc.vector.slice(0, 2).map((v) => v.toFixed(2)).join(', ')}…]
+                  vec: [{doc.vector.slice(0, 2).map((v) => v.toFixed(2)).join(', ')}…]
                 </span>
                 <button
                   onClick={() => handleDelete(doc.id)}
-                  className="text-gray-300 hover:text-red-500 p-1 rounded hover:bg-red-50 transition-colors"
+                  className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
                   title="Delete document"
                   aria-label={`Delete ${doc.title}`}
                 >

@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Cpu, BookOpen, Columns, Sliders, Database } from 'lucide-react';
-import { DomainType, ComplexityLevel } from '../lib/types';
+import React, { useState, useEffect } from 'react';
+import { Cpu, BookOpen, Columns, Database } from 'lucide-react';
+import { DomainType } from '../lib/types';
 import { DOMAIN_CONFIGS } from '../lib/domains';
 import { performKeywordSearch } from '../lib/keywordEngine';
 import { performVectorSearch } from '../lib/vectorEngine';
@@ -21,7 +21,6 @@ export default function Home() {
   const [activeDomain, setActiveDomain] = useState<DomainType>('animals');
   const [query, setQuery] = useState<string>(''); // Default empty to encourage independent exploration
   const [activeTab, setActiveTab] = useState<ActiveTab>('vector');
-  const [complexity, setComplexity] = useState<ComplexityLevel>('beginner');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
 
@@ -38,22 +37,12 @@ export default function Home() {
     }
   }, []);
 
-  // Filter active dataset based on Complexity Control
-  const filteredDocuments = useMemo(() => {
-    return documents.filter((doc) => {
-      if (doc.isCustom) return true; // Always include user-added custom docs
-      if (complexity === 'beginner') return doc.complexity === 'beginner' || !doc.complexity;
-      if (complexity === 'standard') return doc.complexity === 'beginner' || doc.complexity === 'standard' || !doc.complexity;
-      return true; // Advanced includes all
-    });
-  }, [documents, complexity]);
-
-  // Compute search results against filtered dataset
+  // Compute search results against active dataset
   const { tokens, activeTokens, filteredStopWords, results: keywordResults } =
-    performKeywordSearch(query, filteredDocuments);
+    performKeywordSearch(query, documents);
 
   const { queryVector, queryCoords, results: vectorResults } =
-    performVectorSearch(query, filteredDocuments);
+    performVectorSearch(query, documents);
 
   const tabs: { id: ActiveTab; label: string; icon: React.ReactNode; color: string }[] = [
     {
@@ -154,30 +143,6 @@ export default function Home() {
               })}
             </div>
           </nav>
-
-          {/* Dynamic Dataset Complexity Control */}
-          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-2xs self-start sm:self-auto">
-            <Sliders className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-            <span className="text-xs text-gray-500 font-medium">Dataset Complexity:</span>
-            <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
-              {(['beginner', 'standard', 'advanced'] as ComplexityLevel[]).map((level) => (
-                <button
-                  key={level}
-                  onClick={() => setComplexity(level)}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold capitalize transition-all cursor-pointer ${
-                    complexity === level
-                      ? 'bg-white text-blue-700 shadow-2xs'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                  title={`Switch to ${level} dataset (${
-                    level === 'beginner' ? '3 items' : level === 'standard' ? '6 items' : '8 items'
-                  })`}
-                >
-                  {level}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* ── Challenge Strip (contextual) ── */}
@@ -199,7 +164,7 @@ export default function Home() {
                 queryCoords={queryCoords}
                 vectorResults={vectorResults}
                 activeDomain={activeDomain}
-                documents={filteredDocuments}
+                documents={documents}
               />
             </div>
           )}
@@ -212,7 +177,7 @@ export default function Home() {
                 activeTokens={activeTokens}
                 filteredStopWords={filteredStopWords}
                 keywordResults={keywordResults}
-                documents={filteredDocuments}
+                documents={documents}
               />
             </div>
           )}

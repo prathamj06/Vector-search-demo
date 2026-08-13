@@ -81,6 +81,12 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
           </div>
 
           <div className="px-5 py-4 space-y-2.5">
+            {query.trim() !== '' && keywordResults.every((kr) => kr.matchScore === 0) && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 font-medium flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <span>No keyword matches found for "{query}". Exact string overlap scored 0%.</span>
+              </div>
+            )}
             {keywordResults.map((kr, idx) => {
               const isZero = kr.matchScore === 0;
               return (

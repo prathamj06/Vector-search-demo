@@ -88,15 +88,6 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
 
-            {/* Dataset Portal Drawer Trigger */}
-            <button
-              onClick={onOpenDrawer}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-colors cursor-pointer shadow-xs"
-              title="Open Database Portal Drawer"
-            >
-              <Database className="w-3.5 h-3.5 text-blue-600" />
-              <span>Database Portal 🗄️</span>
-            </button>
           </div>
         </div>
 
