@@ -1,7 +1,30 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Cpu, Target, Compass, Code, Copy, Check, Info, Radio, AlertTriangle, Star } from 'lucide-react';
+import {
+  Cpu,
+  Target,
+  Compass,
+  Code,
+  Copy,
+  Check,
+  Info,
+  Radio,
+  AlertTriangle,
+  Star,
+  PawPrint,
+  Zap,
+  Shield,
+  Moon,
+  ShoppingBag,
+  ThermometerSnowflake,
+  Activity,
+  Mountain,
+  Rocket,
+  Smile,
+  Heart,
+  Sparkles,
+} from 'lucide-react';
 import { Document, DomainConfig, VectorSearchResult, ConceptInfo } from '../lib/types';
 import { DOMAIN_CONFIGS } from '../lib/domains';
 import { ConceptInfoModal } from './ConceptInfoModal';
@@ -14,6 +37,32 @@ interface VectorVisualizerProps {
   activeDomain: string;
   documents: Document[];
 }
+
+const getDimensionIcon = (domain: string, idx: number) => {
+  if (domain === 'animals') {
+    switch (idx) {
+      case 0: return <PawPrint className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />;
+      case 1: return <Zap className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />;
+      case 2: return <Shield className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />;
+      case 3: return <Moon className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />;
+    }
+  } else if (domain === 'ecommerce') {
+    switch (idx) {
+      case 0: return <ShoppingBag className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />;
+      case 1: return <ThermometerSnowflake className="w-3.5 h-3.5 text-cyan-600 flex-shrink-0" />;
+      case 2: return <Activity className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />;
+      case 3: return <Mountain className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />;
+    }
+  } else {
+    switch (idx) {
+      case 0: return <Rocket className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />;
+      case 1: return <Compass className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />;
+      case 2: return <Smile className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />;
+      case 3: return <Heart className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />;
+    }
+  }
+  return <Sparkles className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />;
+};
 
 const VECTOR_CONCEPT_INFOS: Record<number, ConceptInfo> = {
   1: {
@@ -228,11 +277,14 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
                 {queryVector.map((val, idx) => (
                   <div
                     key={idx}
-                    className="flex flex-col gap-0.5 bg-white border border-blue-200 rounded-lg px-3 py-2 shadow-2xs"
+                    className="flex flex-col gap-1 bg-white border border-blue-200 rounded-lg px-3 py-2 shadow-2xs"
                   >
-                    <span className="text-[10px] text-gray-400 truncate">
-                      {currentDomainConfig.dimensions[idx]}
-                    </span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {getDimensionIcon(activeDomain, idx)}
+                      <span className="text-[10px] text-gray-600 font-sans font-medium truncate">
+                        {currentDomainConfig.dimensions[idx]}
+                      </span>
+                    </div>
                     <span className={`text-sm font-bold ${val >= 0 ? 'text-blue-700' : 'text-indigo-600'}`}>
                       {val > 0 ? `+${val}` : val}
                     </span>
@@ -269,7 +321,10 @@ export const VectorVisualizer: React.FC<VectorVisualizerProps> = ({
               return (
                 <div key={idx} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-gray-700">{dimLabel}</span>
+                    <span className="font-medium text-gray-700 flex items-center gap-1.5">
+                      {getDimensionIcon(activeDomain, idx)}
+                      <span>{dimLabel}</span>
+                    </span>
                     <span className="font-mono font-semibold text-indigo-600">{barPercent}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">

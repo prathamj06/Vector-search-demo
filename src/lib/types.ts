@@ -59,6 +59,30 @@ export interface VectorSearchResult {
   rank: number;
 }
 
+export type HybridMethod = 'linear' | 'rrf';
+
+export interface HybridSearchResult {
+  doc: Document;
+  hybridScore: number;       // 0 - 100% normalized score for display
+  rank: number;
+  keywordScore: number;
+  vectorScore: number;
+  keywordRank: number;
+  vectorRank: number;
+  linearBreakdown?: {
+    alpha: number;
+    vectorComponent: number;
+    keywordComponent: number;
+  };
+  rrfBreakdown?: {
+    k: number;
+    keywordRrfScore: number;
+    vectorRrfScore: number;
+    rawRrfScore: number;
+  };
+  badgeTag?: 'dual_consensus' | 'vector_rescued' | 'keyword_boosted';
+}
+
 export interface ConceptInfo {
   title: string;
   subtitle: string;

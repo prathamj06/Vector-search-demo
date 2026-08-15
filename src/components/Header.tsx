@@ -78,7 +78,7 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   {(Object.keys(DOMAIN_CONFIGS) as DomainType[]).map((key) => (
                     <option key={key} value={key}>
-                      {DOMAIN_CONFIGS[key].icon} {DOMAIN_CONFIGS[key].label}
+                      {DOMAIN_CONFIGS[key].label}
                     </option>
                   ))}
                 </select>

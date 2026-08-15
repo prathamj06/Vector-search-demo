@@ -1,26 +1,31 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Cpu, BookOpen, Columns, Database } from 'lucide-react';
-import { DomainType } from '../lib/types';
+import { Cpu, BookOpen, Columns, Database, Sparkles } from 'lucide-react';
+import { DomainType, HybridMethod } from '../lib/types';
 import { DOMAIN_CONFIGS } from '../lib/domains';
 import { performKeywordSearch } from '../lib/keywordEngine';
 import { performVectorSearch } from '../lib/vectorEngine';
+import { performHybridSearch } from '../lib/hybridEngine';
 import { Header } from '../components/Header';
 import { ChallengeBanner } from '../components/ChallengeBanner';
 import { KeywordVisualizer } from '../components/KeywordVisualizer';
 import { VectorVisualizer } from '../components/VectorVisualizer';
+import { HybridVisualizer } from '../components/HybridVisualizer';
 import { ComparisonMatrix } from '../components/ComparisonMatrix';
 import { CorpusDrawer } from '../components/CorpusDrawer';
 import { OnboardingModal } from '../components/OnboardingModal';
 import { useDocumentStore } from '../lib/useDocumentStore';
 
-type ActiveTab = 'vector' | 'keyword' | 'comparison';
+type ActiveTab = 'vector' | 'keyword' | 'hybrid' | 'comparison';
 
 export default function Home() {
   const [activeDomain, setActiveDomain] = useState<DomainType>('animals');
   const [query, setQuery] = useState<string>(''); // Default empty to encourage independent exploration
   const [activeTab, setActiveTab] = useState<ActiveTab>('vector');
+  const [hybridMethod, setHybridMethod] = useState<HybridMethod>('linear');
+  const [alpha, setAlpha] = useState<number>(0.5);
+  const [rrfK, setRrfK] = useState<number>(60);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
 
@@ -44,6 +49,14 @@ export default function Home() {
   const { queryVector, queryCoords, results: vectorResults } =
     performVectorSearch(query, documents);
 
+  const hybridResults = performHybridSearch(
+    keywordResults,
+    vectorResults,
+    hybridMethod,
+    alpha,
+    rrfK
+  );
+
   const tabs: { id: ActiveTab; label: string; icon: React.ReactNode; color: string }[] = [
     {
       id: 'vector',
@@ -56,6 +69,12 @@ export default function Home() {
       label: 'Keyword Search',
       icon: <BookOpen className="w-4 h-4" />,
       color: 'amber',
+    },
+    {
+      id: 'hybrid',
+      label: 'Hybrid Search',
+      icon: <Sparkles className="w-4 h-4" />,
+      color: 'purple',
     },
     {
       id: 'comparison',
@@ -116,9 +135,10 @@ export default function Home() {
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 const colorMap = {
-                  blue:  isActive ? 'text-blue-700'  : 'text-gray-500 hover:text-gray-700',
-                  amber: isActive ? 'text-amber-700' : 'text-gray-500 hover:text-gray-700',
-                  gray:  isActive ? 'text-gray-800'  : 'text-gray-500 hover:text-gray-700',
+                  blue:   isActive ? 'text-blue-700'   : 'text-gray-500 hover:text-gray-700',
+                  amber:  isActive ? 'text-amber-700'  : 'text-gray-500 hover:text-gray-700',
+                  purple: isActive ? 'text-purple-700' : 'text-gray-500 hover:text-gray-700',
+                  gray:   isActive ? 'text-gray-800'   : 'text-gray-500 hover:text-gray-700',
                 };
                 return (
                   <button
@@ -134,7 +154,7 @@ export default function Home() {
                         : colorMap[tab.color as keyof typeof colorMap]
                     }`}
                   >
-                    <span className={isActive ? (tab.color === 'blue' ? 'text-blue-600' : tab.color === 'amber' ? 'text-amber-600' : 'text-gray-600') : 'text-gray-400'}>
+                    <span className={isActive ? (tab.color === 'blue' ? 'text-blue-600' : tab.color === 'amber' ? 'text-amber-600' : tab.color === 'purple' ? 'text-purple-600' : 'text-gray-600') : 'text-gray-400'}>
                       {tab.icon}
                     </span>
                     <span>{tab.label}</span>
@@ -177,6 +197,25 @@ export default function Home() {
                 activeTokens={activeTokens}
                 filteredStopWords={filteredStopWords}
                 keywordResults={keywordResults}
+                documents={documents}
+              />
+            </div>
+          )}
+
+          {activeTab === 'hybrid' && (
+            <div id="panel-hybrid" role="tabpanel" aria-labelledby="tab-hybrid">
+              <HybridVisualizer
+                query={query}
+                hybridResults={hybridResults}
+                keywordResults={keywordResults}
+                vectorResults={vectorResults}
+                hybridMethod={hybridMethod}
+                setHybridMethod={setHybridMethod}
+                alpha={alpha}
+                setAlpha={setAlpha}
+                rrfK={rrfK}
+                setRrfK={setRrfK}
+                activeDomain={activeDomain}
                 documents={documents}
               />
             </div>
